@@ -1,0 +1,11 @@
+#contiki files
+*.srf06-cc26xx
+*.map
+*.a
+*.d
+*.o
+
+#binaries
+*.bin
+*.elf
+*.hex
