@@ -66,9 +66,37 @@
  * Modified to implement the magnetometer
  */
 /*---------------------------------------------------------------------------*/
-#ifndef MPU_9250_SENSOR_H_
-#define MPU_9250_SENSOR_H_
+#ifndef MPU_9250_SENSOR_MAG_H_
+#define MPU_9250_SENSOR_MAG_H_
 /*---------------------------------------------------------------------------*/
+#include "mpu_9250_sensor.h"
+
+#ifdef MPU_9250_SENSOR_H_
+#undef MPU_9250_SENSOR_TYPE_GYRO_Z   0x001
+#undef MPU_9250_SENSOR_TYPE_GYRO_Y   0x002
+#undef MPU_9250_SENSOR_TYPE_GYRO_X   0x004
+#undef MPU_9250_SENSOR_TYPE_GYRO_ALL 0x007
+
+#undef MPU_9250_SENSOR_TYPE_ACC_Z    0x008
+#undef MPU_9250_SENSOR_TYPE_ACC_Y    0x010
+#undef MPU_9250_SENSOR_TYPE_ACC_X    0x020
+#undef MPU_9250_SENSOR_TYPE_ACC_ALL  0x038
+
+#undef MPU_9250_SENSOR_TYPE_MASK     0x1FF
+#undef MPU_9250_SENSOR_TYPE_ACC      0x038
+#undef MPU_9250_SENSOR_TYPE_GYRO     0x007
+
+#undef MPU_9250_SENSOR_TYPE_NONE        0
+#undef MPU_9250_SENSOR_TYPE_ALL
+
+#undef MPU_9250_SENSOR_ACC_RANGE_2G     0
+#undef MPU_9250_SENSOR_ACC_RANGE_4G     1
+#undef MPU_9250_SENSOR_ACC_RANGE_8G     2
+#undef MPU_9250_SENSOR_ACC_RANGE_16G    3
+
+#undef MPU_9250_SENSOR_ACC_RANGE
+#endif //MPU_9250_SENSOR_H_
+
 /* ACC / Gyro Axes */
 #define MPU_9250_SENSOR_TYPE_GYRO_Z   0x001
 #define MPU_9250_SENSOR_TYPE_GYRO_Y   0x002
@@ -109,8 +137,12 @@
 #endif
 /*---------------------------------------------------------------------------*/
 extern const struct sensors_sensor mpu_9250_sensor;
+/* Override Functions -------------------------------------------------------*/
+#define value(MPU_9250_SENSOR_TYPE_MAG_X) magnetometer_value(MPU_9250_SENSOR_TYPE_MAG_X)
+#define value(MPU_9250_SENSOR_TYPE_MAG_Y) magnetometer_value(MPU_9250_SENSOR_TYPE_MAG_Y)
+#define value(MPU_9250_SENSOR_TYPE_MAG_Z) magnetometer_value(MPU_9250_SENSOR_TYPE_MAG_Z)
 /*---------------------------------------------------------------------------*/
-#endif /* MPU_9250_SENSOR_H_ */
+#endif /* MPU_9250_SENSOR_MAG_H_ */
 /*---------------------------------------------------------------------------*/
 /**
  * @}

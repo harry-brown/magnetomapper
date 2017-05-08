@@ -12,6 +12,7 @@
 #define MAPPER_H_
 /* Includes ------------------------------------------------------------------*/
 #include "mpu-9250-sensor.h"
+#include "magnetometer.h"
 #include "contiki.h"
 #include "dev/serial-line.h"
 #include "dev/cc26xx-uart.h"
