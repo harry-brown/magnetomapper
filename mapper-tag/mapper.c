@@ -28,7 +28,6 @@ AUTOSTART_PROCESSES(&main_process, &mpu_sensor_process);
 
 /* Timers --------------------------------------------------------------------*/
 static struct ctimer alive_timer;
-static struct ctimer mpu_timer;
 
 /* Main Process --------------------------------------------------------------*/
 PROCESS_THREAD(main_process, ev, data)
@@ -51,8 +50,7 @@ PROCESS_THREAD(main_process, ev, data)
         {
             if (strcmp(data, "poll") == 0)
             {
-                printf("<measurement text here>");
-                PRINTF("\n\r");
+                init_mpu_reading(NULL);
             }
         }
     }
@@ -110,7 +108,6 @@ static void init_mpu_reading(void *not_used)
 static void get_mpu_reading()
 {
   int value;
-  clock_time_t next = CLOCK_SECOND / 2;
 
   printf("MPU Acc: X=");
   value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_X);
@@ -143,8 +140,6 @@ static void get_mpu_reading()
   printf(" uT\n");
 
   SENSORS_DEACTIVATE(mpu_9250_sensor);
-
-  ctimer_set(&mpu_timer, next, init_mpu_reading, NULL);
 }
 /*---------------------------------------------------------------------------*/
 static void print_mpu_reading(int reading)
