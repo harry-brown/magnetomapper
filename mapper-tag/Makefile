@@ -9,6 +9,7 @@ BOARD=sensortag/cc2650
 CFLAGS += -DUIP_CONF_ND6_SEND_NA=1
 CFLAGS += -DUIP_CONF_ND6_SEND_NS=1
 CFLAGS += -DRF_CORE_CONF_CHANNEL=18
+BOARD_SOURCEFILES += modified-mpu-9250-sensor.c
 APPS += json
 include $(CONTIKI)/Makefile.include
 
