@@ -27,7 +27,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \addtogroup sensortag-cc26xx-mpu
  * @{
@@ -35,7 +35,7 @@
  * \file
  *  Driver for the Sensortag Invensense MPU9250 motion processing unit
  */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #include "contiki-conf.h"
 #include "lib/sensors.h"
 #include "modified-mpu-9250-sensor.h"
@@ -49,18 +49,18 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #define DEBUG 0
 #if DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
 #endif
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Sensor I2C address */
 #define SENSOR_I2C_ADDRESS            0x68
 #define SENSOR_MAG_I2C_ADDRESS        0x0C
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Registers */
 #define SELF_TEST_X_GYRO              0x00 /* R/W */
 #define SELF_TEST_Y_GYRO              0x01 /* R/W */
@@ -68,14 +68,14 @@
 #define SELF_TEST_X_ACCEL             0x0D /* R/W */
 #define SELF_TEST_Z_ACCEL             0x0E /* R/W */
 #define SELF_TEST_Y_ACCEL             0x0F /* R/W */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #define XG_OFFSET_H                   0x13 /* R/W */
 #define XG_OFFSET_L                   0x14 /* R/W */
 #define YG_OFFSET_H                   0x15 /* R/W */
 #define YG_OFFSET_L                   0x16 /* R/W */
 #define ZG_OFFSET_H                   0x17 /* R/W */
 #define ZG_OFFSET_L                   0x18 /* R/W */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #define SMPLRT_DIV                    0x19 /* R/W */
 #define CONFIG                        0x1A /* R/W */
 #define GYRO_CONFIG                   0x1B /* R/W */
@@ -84,7 +84,7 @@
 #define LP_ACCEL_ODR                  0x1E /* R/W */
 #define WOM_THR                       0x1F /* R/W */
 #define FIFO_EN                       0x23 /* R/W */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /*
  * Registers 0x24 - 0x36 are not applicable to the SensorTag HW configuration
  * (IC2 Master)
@@ -106,7 +106,7 @@
 #define GYRO_YOUT_L                   0x46 /* R */
 #define GYRO_ZOUT_H                   0x47 /* R */
 #define GYRO_ZOUT_L                   0x48 /* R */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /*
  * Registers 0x49 - 0x60 are not applicable to the SensorTag HW configuration
  * (external sensor data)
@@ -123,23 +123,23 @@
 #define FIFO_COUNT_L                  0x73 /* R/W */
 #define FIFO_R_W                      0x74 /* R/W */
 #define WHO_AM_I                      0x75 /* R/W */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Masks is mpuConfig valiable */
 #define ACC_CONFIG_MASK               0x38
 #define GYRO_CONFIG_MASK              0x07
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Values PWR_MGMT_1 */
 #define MPU_SLEEP                     0x4F  /* Sleep + stop all clocks */
 #define MPU_WAKE_UP                   0x09  /* Disable temp. + intern osc */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Values PWR_MGMT_2 */
 #define ALL_AXES                      0x3F
 #define GYRO_AXES                     0x07
 #define ACC_AXES                      0x38
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Data sizes */
 #define DATA_SIZE                     6
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Output data rates */
 #define INV_LPA_0_3125HZ              0
 #define INV_LPA_0_625HZ               1
@@ -154,7 +154,7 @@
 #define INV_LPA_320HZ                 10
 #define INV_LPA_640HZ                 11
 #define INV_LPA_STOPPED               255
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Bit values */
 #define BIT_ANY_RD_CLR                0x10
 #define BIT_RAW_RDY_EN                0x01
@@ -168,15 +168,15 @@
 #define BIT_STBY_ZG                   0x01
 #define BIT_STBY_XYZA                 (BIT_STBY_XA | BIT_STBY_YA | BIT_STBY_ZA)
 #define BIT_STBY_XYZG                 (BIT_STBY_XG | BIT_STBY_YG | BIT_STBY_ZG)
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* User control register */
 #define BIT_ACTL                      0x80
 #define BIT_LATCH_EN                  0x20
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* INT Pin / Bypass Enable Configuration */
 #define BIT_AUX_IF_EN                 0x20 /* I2C_MST_EN */
 #define BIT_BYPASS_EN                 0x02
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #define ACC_RANGE_INVALID -1
 
 #define ACC_RANGE_2G      0
@@ -216,15 +216,15 @@
 #define AK8963_ASAX      0x10  // Fuse ROM x-axis sensitivity adjustment value
 #define AK8963_ASAY      0x11  // Fuse ROM y-axis sensitivity adjustment value
 #define AK8963_ASAZ      0x12  // Fuse ROM z-axis sensitivity adjustment value
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Sensor selection/deselection */
 #define SENSOR_SELECT()     board_i2c_select(BOARD_I2C_INTERFACE_1, SENSOR_I2C_ADDRESS)
 #define SENSOR_MAG_SELECT()     board_i2c_select(BOARD_I2C_INTERFACE_1, SENSOR_MAG_I2C_ADDRESS)
 #define SENSOR_DESELECT()   board_i2c_deselect()
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Delay */
 #define delay_ms(i) (ti_lib_cpu_delay(8000 * (i)))
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 static uint8_t mpu_config;
 static uint8_t acc_range;
 static uint8_t acc_range_reg;
@@ -232,19 +232,19 @@ static uint8_t val;
 static uint8_t interrupt_status;
 
 static float magCalibration[3];
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #define SENSOR_STATE_DISABLED     0
 #define SENSOR_STATE_BOOTING      1
 #define SENSOR_STATE_ENABLED      2
 
 static int state = SENSOR_STATE_DISABLED;
 static int elements = MPU_9250_SENSOR_TYPE_NONE;
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* 3 16-byte words for all sensor readings */
 #define SENSOR_DATA_BUF_SIZE   3
 
 static uint16_t sensor_value[SENSOR_DATA_BUF_SIZE];
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /*
  * Wait SENSOR_BOOT_DELAY ticks for the sensor to boot and
  * SENSOR_STARTUP_DELAY for readings to be ready
@@ -254,7 +254,7 @@ static uint16_t sensor_value[SENSOR_DATA_BUF_SIZE];
 #define SENSOR_STARTUP_DELAY  5
 
 static struct ctimer startup_timer;
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Wait for the MPU to have data ready */
 rtimer_clock_t t0;
 
@@ -263,7 +263,7 @@ rtimer_clock_t t0;
  * first time we read the sensor status, it should be ready to return data
  */
 #define READING_WAIT_TIMEOUT 10
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Place the MPU in low power mode
  */
@@ -279,7 +279,7 @@ sensor_sleep(void)
   sensor_common_write_reg(PWR_MGMT_1, &val, 1);
   SENSOR_DESELECT();
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Exit low power mode
  */
@@ -302,7 +302,7 @@ sensor_wakeup(void)
   sensor_common_read_reg(INT_STATUS, &val, 1);
   SENSOR_DESELECT();
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Select gyro and accelerometer axes
  */
@@ -314,7 +314,7 @@ select_axes(void)
   sensor_common_write_reg(PWR_MGMT_2, &val, 1);
   SENSOR_DESELECT();
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 static void
 convert_to_le(uint8_t *data, uint8_t len)
 {
@@ -326,7 +326,7 @@ convert_to_le(uint8_t *data, uint8_t len)
     data[i + 1] = tmp;
   }
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Set the range of the accelerometer
  * \param new_range: ACC_RANGE_2G, ACC_RANGE_4G, ACC_RANGE_8G, ACC_RANGE_16G
@@ -356,7 +356,7 @@ acc_set_range(uint8_t new_range)
 
   return success;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Check whether a data or wake on motion interrupt has occurred
  * \return Return the interrupt status
@@ -373,7 +373,7 @@ int_status(void)
 
   return interrupt_status;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Enable the MPU
  * \param axes: Gyro bitmap [0..2], X = 1, Y = 2, Z = 4. 0 = gyro off
@@ -397,7 +397,7 @@ enable_sensor(uint16_t axes)
     sensor_sleep();
   }
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Read data from the accelerometer - X, Y, Z - 3 words
  * \return True if a valid reading could be taken, false otherwise
@@ -425,7 +425,7 @@ acc_read(uint16_t *data)
 
   return success;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Read data from the gyroscope - X, Y, Z - 3 words
  * \return True if a valid reading could be taken, false otherwise
@@ -455,7 +455,7 @@ gyro_read(uint16_t *data)
 
   return success;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Read data from the magnetometer - X, Y, Z - 3 words
  * \return True if a valid reading could be taken, false otherwise
@@ -496,7 +496,7 @@ mag_read(uint16_t *data)
 
   return success;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Convert accelerometer raw reading to a value in G
  * \param raw_data The raw accelerometer reading
@@ -531,7 +531,7 @@ acc_convert(int16_t raw_data)
 
   return v;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Convert gyro raw reading to a value in deg/sec
  * \param raw_data The raw gyro reading
@@ -543,7 +543,7 @@ gyro_convert(int16_t raw_data)
   /* calculate rotation, unit deg/s, range -250, +250 */
   return (raw_data * 1.0) / (65536 / 500);
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Convert magnetometer raw reading to ________________
  * \param raw_data The raw magnetometer reading
@@ -567,14 +567,14 @@ mag_convert(int16_t raw_data, int type)
 
   return value;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 static void
 notify_ready(void *not_used)
 {
   state = SENSOR_STATE_ENABLED;
   sensors_changed(&mpu_9250_sensor);
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 static void
 magnetometer_initialise(float * calibration)
 {
@@ -622,7 +622,7 @@ magnetometer_initialise(float * calibration)
     PRINTF("FAILED\n\r");
   }
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 static void
 initialise(void *not_used)
 {
@@ -637,7 +637,7 @@ initialise(void *not_used)
 
   ctimer_set(&startup_timer, SENSOR_STARTUP_DELAY, notify_ready, NULL);
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 static void
 power_up(void)
 {
@@ -646,7 +646,7 @@ power_up(void)
 
   ctimer_set(&startup_timer, SENSOR_BOOT_DELAY, initialise, NULL);
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Returns a reading from the sensor
  * \param type MPU_9250_SENSOR_TYPE_ACC_[XYZ] or MPU_9250_SENSOR_TYPE_GYRO_[XYZ]
@@ -745,7 +745,7 @@ value(int type)
 
   return rv;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Configuration function for the MPU9250 sensor.
  *
@@ -797,7 +797,7 @@ configure(int type, int enable)
   }
   return state;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \brief Returns the status of the sensor
  * \param type SENSORS_ACTIVE or SENSORS_READY
@@ -816,7 +816,7 @@ status(int type)
   }
   return SENSOR_STATE_DISABLED;
 }
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 SENSORS_SENSOR(mpu_9250_sensor, "MPU9250", value, configure, status);
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /** @} */

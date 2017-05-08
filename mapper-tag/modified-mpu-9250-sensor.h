@@ -27,7 +27,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * \addtogroup sensortag-cc26xx-peripherals
  * @{
@@ -65,10 +65,10 @@
  * Header file for the Sensortag Invensense MPU9250 motion processing unit
  * Modified to implement the magnetometer
  */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #ifndef MPU_9250_SENSOR_H_
 #define MPU_9250_SENSOR_H_
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* ACC / Gyro Axes */
 #define MPU_9250_SENSOR_TYPE_GYRO_Z   0x001
 #define MPU_9250_SENSOR_TYPE_GYRO_Y   0x002
@@ -94,24 +94,24 @@
 #define MPU_9250_SENSOR_TYPE_ALL      (MPU_9250_SENSOR_TYPE_ACC | \
                                        MPU_9250_SENSOR_TYPE_GYRO | \
                                        MPU_9250_SENSOR_TYPE_MAG)
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Accelerometer range */
 #define MPU_9250_SENSOR_ACC_RANGE_2G     0
 #define MPU_9250_SENSOR_ACC_RANGE_4G     1
 #define MPU_9250_SENSOR_ACC_RANGE_8G     2
 #define MPU_9250_SENSOR_ACC_RANGE_16G    3
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /* Accelerometer range configuration */
 #ifdef MPU_9250_SENSOR_CONF_ACC_RANGE
 #define MPU_9250_SENSOR_ACC_RANGE MPU_9250_SENSOR_CONF_ACC_RANGE
 #else
 #define MPU_9250_SENSOR_ACC_RANGE MPU_9250_SENSOR_ACC_RANGE_2G
 #endif
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 extern const struct sensors_sensor mpu_9250_sensor;
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 #endif /* MPU_9250_SENSOR_H_ */
-/*---------------------------------------------------------------------------*/
+/*----------------------------------------------------------------------------*/
 /**
  * @}
  * @}
