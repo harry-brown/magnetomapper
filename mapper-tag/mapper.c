@@ -178,7 +178,7 @@ static void calibrate_mag()
     if (value < magCalibration.minz) magCalibration.minz = value;
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
-    clock_delay_usec(400);
+    clock_delay_usec(500);
 }
 
 /* Format the data to be displayed -------------------------------------------*/
@@ -199,7 +199,7 @@ PROCESS_THREAD(main_process, ev, data)
 
     PROCESS_BEGIN(); //Start of thread
 
-    PRINTF("Initialising Main Process...\n\r");
+    PRINTF("Initialising Main Process...\n");
 
     init(); //Initialise
 
@@ -215,13 +215,6 @@ PROCESS_THREAD(main_process, ev, data)
             if (strcmp(data, "poll") == 0)
             {
                 init_mpu_reading(NULL);
-            }
-            else if (strcmp(data, "cal") == 0)
-            {
-                printf("maxx: %d, minx: %d, maxy: %d, miny: %d, maxz: %d, minz: %d\n\r",\
-                        magCalibration.maxx, magCalibration.minx,\
-                        magCalibration.maxy, magCalibration.miny,\
-                        magCalibration.maxz, magCalibration.minz);
             }
         }
     }
@@ -264,7 +257,7 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
                     magScale[1] = averageScale / magScale[4];
                     magScale[2] = averageScale / magScale[5];
 
-                    printf(" Complete!\n\r");
+                    printf(" Complete!\n");
                 }else{
                     init_mpu_reading(NULL);
                 }
@@ -294,7 +287,7 @@ PROCESS_THREAD(button_input_process, ev, data)
         if (ev == sensors_event && data == &button_left_sensor)
         {
             if (calibration_samples > number_samples){
-                printf("ping\n\r");
+                printf("ping\n");
             }else{
                 printf("Calibrating magnetometer...");
                 calibrating = 1;

@@ -50,8 +50,8 @@
 #include <stdio.h>
 #include <math.h>
 /*----------------------------------------------------------------------------*/
-#define DEBUG 0
-#if DEBUG
+// #define DEBUG
+#ifdef DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
 #define PRINTF(...)
@@ -231,11 +231,7 @@ static uint8_t acc_range_reg;
 static uint8_t val;
 static uint8_t interrupt_status;
 
-static float magBias[3], magScale[3], magCalibration[3];
-
-static uint16_t ii = 0, sample_count = 40;
-static int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
-static int16_t mag_max[3] = {0x8000, 0x8000, 0x8000}, mag_min[3] = {0x7FFF, 0x7FFF, 0x7FFF}, mag_temp[3] = {0, 0, 0};
+static float magCalibration[3];
 /*----------------------------------------------------------------------------*/
 #define SENSOR_STATE_DISABLED     0
 #define SENSOR_STATE_BOOTING      1
@@ -259,7 +255,6 @@ static int16_t mag_sensor_value[SENSOR_DATA_BUF_SIZE];
 #define SENSOR_STARTUP_DELAY  5
 
 static struct ctimer startup_timer;
-static struct ctimer calibration_timer;
 /*----------------------------------------------------------------------------*/
 /* Wait for the MPU to have data ready */
 rtimer_clock_t t0;
@@ -567,13 +562,13 @@ mag_convert(int16_t raw_data, int type)
   float value = 0.0;
   switch (type){
     case MPU_9250_SENSOR_TYPE_MAG_X:
-      value = (raw_data * 1.0 * magCalibration[0]);// - magBias[0]);// * magScale[0];
+      value = (raw_data * 1.0 * magCalibration[0]);
       break;
     case MPU_9250_SENSOR_TYPE_MAG_Y:
-      value = (raw_data * 1.0 * magCalibration[1]);// - magBias[1]);// * magScale[1];
+      value = (raw_data * 1.0 * magCalibration[1]);
       break;
     case MPU_9250_SENSOR_TYPE_MAG_Z:
-      value = (raw_data * 1.0 * magCalibration[2]);// - magBias[2]);// * magScale[2];
+      value = (raw_data * 1.0 * magCalibration[2]);
       break;
   }
 
@@ -586,51 +581,6 @@ notify_ready(void *not_used)
   state = SENSOR_STATE_ENABLED;
   sensors_changed(&mpu_9250_sensor);
 }
-
-// /*----------------------------------------------------------------------------*/
-//  void magnetometer_calibrate(void *not_used) 
-//  {
-//     printf("Mag Calibration: Wave device in a figure eight until done!\n\r");
-
-//     if (ii < sample_count){
-//         mag_read(mag_temp);
-//         // MPU9250readMagData(mag_temp);  // Read the mag data   
-//         for (int jj = 0; jj < 3; jj++) {
-//             if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
-//             if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
-//         }
-//         delay_ms(135);// clock_delay_usec(135);  // at 8 Hz ODR, new mag data is available every 125 ms
-//         ctimer_reset(&calibration_timer);
-//     } else {
-//         // Get hard iron correction
-//         mag_bias[0]  = (mag_max[0] + mag_min[0])/2;  // get average x mag bias in counts
-//         mag_bias[1]  = (mag_max[1] + mag_min[1])/2;  // get average y mag bias in counts
-//         mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
-
-//         magBias[0] = (float) mag_bias[0]*magCalibration[0];  // save mag biases in G for main program
-//         magBias[1] = (float) mag_bias[1]*magCalibration[1];   
-//         magBias[2] = (float) mag_bias[2]*magCalibration[2];  
-
-//         // Get soft iron correction estimate
-//         mag_scale[0]  = (mag_max[0] - mag_min[0])/2;  // get average x axis max chord length in counts
-//         mag_scale[1]  = (mag_max[1] - mag_min[1])/2;  // get average y axis max chord length in counts
-//         mag_scale[2]  = (mag_max[2] - mag_min[2])/2;  // get average z axis max chord length in counts
-
-//         float avg_rad = mag_scale[0] + mag_scale[1] + mag_scale[2];
-//         avg_rad /= 3.0;
-
-//         magScale[0] = avg_rad/((float)mag_scale[0]);
-//         magScale[1] = avg_rad/((float)mag_scale[1]);
-//         magScale[2] = avg_rad/((float)mag_scale[2]);
-
-//         printf("Mag Calibration done!\n\r");
-//     }
-//  }
-
-// /*----------------------------------------------------------------------------*/
-// extern void calibrate_MPU9250_magnetometer(void){
-//     ctimer_set(&calibration_timer, CLOCK_SECOND / 4, magnetometer_calibrate, NULL);
-// }
 
 /*----------------------------------------------------------------------------*/
 static void
