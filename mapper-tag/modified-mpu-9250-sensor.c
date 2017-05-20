@@ -231,7 +231,11 @@ static uint8_t acc_range_reg;
 static uint8_t val;
 static uint8_t interrupt_status;
 
-static float magCalibration[3];
+static float magBias[3], magScale[3], magCalibration[3];
+
+static uint16_t ii = 0, sample_count = 40;
+static int32_t mag_bias[3] = {0, 0, 0}, mag_scale[3] = {0, 0, 0};
+static int16_t mag_max[3] = {0x8000, 0x8000, 0x8000}, mag_min[3] = {0x7FFF, 0x7FFF, 0x7FFF}, mag_temp[3] = {0, 0, 0};
 /*----------------------------------------------------------------------------*/
 #define SENSOR_STATE_DISABLED     0
 #define SENSOR_STATE_BOOTING      1
@@ -244,6 +248,7 @@ static int elements = MPU_9250_SENSOR_TYPE_NONE;
 #define SENSOR_DATA_BUF_SIZE   3
 
 static uint16_t sensor_value[SENSOR_DATA_BUF_SIZE];
+static int16_t mag_sensor_value[SENSOR_DATA_BUF_SIZE];
 /*----------------------------------------------------------------------------*/
 /*
  * Wait SENSOR_BOOT_DELAY ticks for the sensor to boot and
@@ -254,6 +259,7 @@ static uint16_t sensor_value[SENSOR_DATA_BUF_SIZE];
 #define SENSOR_STARTUP_DELAY  5
 
 static struct ctimer startup_timer;
+static struct ctimer calibration_timer;
 /*----------------------------------------------------------------------------*/
 /* Wait for the MPU to have data ready */
 rtimer_clock_t t0;
@@ -461,38 +467,44 @@ gyro_read(uint16_t *data)
  * \return True if a valid reading could be taken, false otherwise
  */
 static bool
-mag_read(uint16_t *data)
+mag_read(int16_t *data)
 {
   bool success;
   int timeout = 0;
 
-  if(interrupt_status & BIT_RAW_RDY_EN) {
-    /* Select this sensor */
-    SENSOR_MAG_SELECT();
-
-    while(!(sensor_common_read_reg(AK8963_ST1, (uint8_t *)data, 1)) & 0x01){
-      clock_delay(1);
-      if (timeout++ > 1000) {
-        printf("1\n\r");
-        success = false;
-        return success;
-      }
+  while(!(interrupt_status & BIT_RAW_RDY_EN)){
+    clock_delay_usec(1);
+    if (timeout++ > 1000) {
+      printf("Magnetometer read failed. Not Ready.\n\r");
+      success = false;
+      return success;
     }
-
-    /* Burst read of all magnetometer values */
-    success = sensor_common_read_reg(AK8963_XOUT_L, (uint8_t *)data, DATA_SIZE);
-
-    if(success) {
-      convert_to_le((uint8_t *)data, DATA_SIZE);
-    } else {
-      sensor_common_set_error_data((uint8_t *)data, DATA_SIZE);
-    }
-
-    SENSOR_DESELECT();
-  } else {
-    printf("2\n\r");
-    success = false;
   }
+
+  /* Select this sensor */
+  SENSOR_MAG_SELECT();
+  timeout = 0;
+  while(!(sensor_common_read_reg(AK8963_ST1, (uint8_t *)data, 1)) & 0x01){
+    delay_ms(1);
+    if (timeout++ > 1000) {
+      printf("Magnetometer read failed. Read timed out\n\r");
+      success = false;
+      return success;
+    }
+  }
+  /* Burst read of all magnetometer values */
+  success = sensor_common_read_reg(AK8963_XOUT_L, (uint8_t *)data, DATA_SIZE);
+
+  if(!success) {
+    // printf("\n\r%04x\n\r", data[1]);
+    // convert_to_le((uint8_t *)data, DATA_SIZE);
+    // printf("\n\r%04x\n\r", data[1]);
+  // } else {
+    printf("Magnetometer read failed during read operation.\n\r");
+    sensor_common_set_error_data((uint8_t *)data, DATA_SIZE);
+  }
+
+  SENSOR_DESELECT();
 
   return success;
 }
@@ -555,13 +567,13 @@ mag_convert(int16_t raw_data, int type)
   float value = 0.0;
   switch (type){
     case MPU_9250_SENSOR_TYPE_MAG_X:
-      value = raw_data * 10.*4912./3276000.0 * magCalibration[0];
+      value = (raw_data * 1.0 * magCalibration[0]);// - magBias[0]);// * magScale[0];
       break;
     case MPU_9250_SENSOR_TYPE_MAG_Y:
-      value = raw_data * 10.*4912./3276000.0 * magCalibration[1];
+      value = (raw_data * 1.0 * magCalibration[1]);// - magBias[1]);// * magScale[1];
       break;
     case MPU_9250_SENSOR_TYPE_MAG_Z:
-      value = raw_data * 10.*4912./3276000.0 * magCalibration[2];
+      value = (raw_data * 1.0 * magCalibration[2]);// - magBias[2]);// * magScale[2];
       break;
   }
 
@@ -574,9 +586,55 @@ notify_ready(void *not_used)
   state = SENSOR_STATE_ENABLED;
   sensors_changed(&mpu_9250_sensor);
 }
+
+// /*----------------------------------------------------------------------------*/
+//  void magnetometer_calibrate(void *not_used) 
+//  {
+//     printf("Mag Calibration: Wave device in a figure eight until done!\n\r");
+
+//     if (ii < sample_count){
+//         mag_read(mag_temp);
+//         // MPU9250readMagData(mag_temp);  // Read the mag data   
+//         for (int jj = 0; jj < 3; jj++) {
+//             if(mag_temp[jj] > mag_max[jj]) mag_max[jj] = mag_temp[jj];
+//             if(mag_temp[jj] < mag_min[jj]) mag_min[jj] = mag_temp[jj];
+//         }
+//         delay_ms(135);// clock_delay_usec(135);  // at 8 Hz ODR, new mag data is available every 125 ms
+//         ctimer_reset(&calibration_timer);
+//     } else {
+//         // Get hard iron correction
+//         mag_bias[0]  = (mag_max[0] + mag_min[0])/2;  // get average x mag bias in counts
+//         mag_bias[1]  = (mag_max[1] + mag_min[1])/2;  // get average y mag bias in counts
+//         mag_bias[2]  = (mag_max[2] + mag_min[2])/2;  // get average z mag bias in counts
+
+//         magBias[0] = (float) mag_bias[0]*magCalibration[0];  // save mag biases in G for main program
+//         magBias[1] = (float) mag_bias[1]*magCalibration[1];   
+//         magBias[2] = (float) mag_bias[2]*magCalibration[2];  
+
+//         // Get soft iron correction estimate
+//         mag_scale[0]  = (mag_max[0] - mag_min[0])/2;  // get average x axis max chord length in counts
+//         mag_scale[1]  = (mag_max[1] - mag_min[1])/2;  // get average y axis max chord length in counts
+//         mag_scale[2]  = (mag_max[2] - mag_min[2])/2;  // get average z axis max chord length in counts
+
+//         float avg_rad = mag_scale[0] + mag_scale[1] + mag_scale[2];
+//         avg_rad /= 3.0;
+
+//         magScale[0] = avg_rad/((float)mag_scale[0]);
+//         magScale[1] = avg_rad/((float)mag_scale[1]);
+//         magScale[2] = avg_rad/((float)mag_scale[2]);
+
+//         printf("Mag Calibration done!\n\r");
+//     }
+//  }
+
+// /*----------------------------------------------------------------------------*/
+// extern void calibrate_MPU9250_magnetometer(void){
+//     ctimer_set(&calibration_timer, CLOCK_SECOND / 4, magnetometer_calibrate, NULL);
+// }
+
 /*----------------------------------------------------------------------------*/
 static void
-magnetometer_initialise(float * calibration)
+magnetometer_initialise(void)
 {
   bool success;
   // First extract the factory calibration for each magnetometer axis
@@ -588,33 +646,34 @@ magnetometer_initialise(float * calibration)
 
   val = 0x22;
   success = sensor_common_write_reg(INT_PIN_CFG, &val, 1); // Enable Bypass
-  clock_delay(10);
+  clock_delay_usec(10);
   
   SENSOR_MAG_SELECT();
 
   val = 0x00;
   success = success & sensor_common_write_reg(AK8963_CNTL, &val, 1); // Power down magnetometer  
-  clock_delay(10);
+  clock_delay_usec(10);
 
   val = 0x0F;
   success = success & sensor_common_write_reg(AK8963_CNTL, &val, 1); // Enter Fuse ROM access mode
-  clock_delay(10);
+  clock_delay_usec(10);
   
   success = success & sensor_common_read_reg(AK8963_ASAX, &rawData[0], 3);  // Read the x-, y-, and z-axis calibration values
-  calibration[0] =  (float)(rawData[0] - 128)/256. + 1.;   // Return x-axis sensitivity adjustment values, etc.
-  calibration[1] =  (float)(rawData[1] - 128)/256. + 1.;  
-  calibration[2] =  (float)(rawData[2] - 128)/256. + 1.;
+
+  magCalibration[0] =  (float)(rawData[0] - 128)/256. + 1.;   // Return x-axis sensitivity adjustment values, etc.
+  magCalibration[1] =  (float)(rawData[1] - 128)/256. + 1.;  
+  magCalibration[2] =  (float)(rawData[2] - 128)/256. + 1.;
 
   val = 0x00;
   success = success & sensor_common_write_reg(AK8963_CNTL, &val, 1); // Enter Fuse ROM access mode
-  clock_delay(10);
+  clock_delay_usec(10);
 
   // Configure the magnetometer for continuous read and highest resolution
   // set Mscale bit 4 to 1 (0) to enable 16 (14) bit resolution in CNTL register,
   // and enable continuous mode data acquisition Mmode (bits [3:0]), 0010 for 8 Hz and 0110 for 100 Hz sample rates  
   val = 0x12;
   success = success & sensor_common_write_reg(AK8963_CNTL, &val, 1); // Set magnetometer data resolution and sample ODR
-  clock_delay(10);
+  clock_delay_usec(10);
 
   if (success) {
     PRINTF("SUCCESS\n\r");
@@ -633,7 +692,7 @@ initialise(void *not_used)
 
   enable_sensor(elements & MPU_9250_SENSOR_TYPE_ALL);
 
-  magnetometer_initialise(magCalibration);
+  magnetometer_initialise();
 
   ctimer_set(&startup_timer, SENSOR_STARTUP_DELAY, notify_ready, NULL);
 }
@@ -664,6 +723,7 @@ value(int type)
   }
 
   memset(sensor_value, 0, sizeof(sensor_value));
+  memset(mag_sensor_value, 0, sizeof(mag_sensor_value));
 
   if((type & MPU_9250_SENSOR_TYPE_ACC) != 0) {
     t0 = RTIMER_NOW();
@@ -718,7 +778,7 @@ value(int type)
     while(!int_status() &&
           (RTIMER_CLOCK_LT(RTIMER_NOW(), t0 + READING_WAIT_TIMEOUT)));
 
-    rv = mag_read(sensor_value);
+    rv = mag_read(mag_sensor_value);
 
     if(rv == 0) {
       PRINTF("MPU: MAG read error\n");
@@ -726,14 +786,14 @@ value(int type)
     }
 
     PRINTF("MPU: MAG = 0x%04x 0x%04x 0x%04x = ",
-           sensor_value[0], sensor_value[1], sensor_value[2]);
+           mag_sensor_value[0], mag_sensor_value[1], mag_sensor_value[2]);
 
     if(type == MPU_9250_SENSOR_TYPE_MAG_X) {
-      converted_val = mag_convert(sensor_value[0], type);
+      converted_val = mag_convert(mag_sensor_value[0], type);
     } else if(type == MPU_9250_SENSOR_TYPE_MAG_Y) {
-      converted_val = mag_convert(sensor_value[1], type);
+      converted_val = mag_convert(mag_sensor_value[1], type);
     } else if(type == MPU_9250_SENSOR_TYPE_MAG_Z) {
-      converted_val = mag_convert(sensor_value[2], type);
+      converted_val = mag_convert(mag_sensor_value[2], type);
     }
     rv = (int)(converted_val * 100);
   } else {

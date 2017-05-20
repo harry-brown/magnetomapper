@@ -19,6 +19,7 @@
 #include "sys/ctimer.h"
 #include "sensor-common.h"
 #include "lib/sensors.h"
+#include "button-sensor.h"
 
 #include <stdio.h>
 #include <string.h>
