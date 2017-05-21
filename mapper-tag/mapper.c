@@ -127,29 +127,29 @@ static void get_mpu_reading()
 
     printf("{");
 
-    printf("accx: ");
+    printf("\"accx\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_X);
     print_mpu_reading(value);
 
-    printf(", accy: ");
+    printf(", \"accy\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Y);
     print_mpu_reading(value);
 
-    printf(", accz: ");
+    printf(", \"accz\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Z);
     print_mpu_reading(value);
 
-    printf(", magx: ");
+    printf(", \"magx\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_X);
     print_mpu_reading(value);
 
-    printf(", magy: ");
+    printf(", \"magy\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Y);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Y);
     print_mpu_reading(value);
 
-    printf(", magz: ");
+    printf(", \"magz\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Z);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Z);
     print_mpu_reading(value);
