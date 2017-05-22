@@ -164,21 +164,21 @@ static void calibrate_mag()
 {
     int value;
     
-    clock_delay_usec(450);
+    clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
     if (value > magCalibration.maxx) magCalibration.maxx = value;
     if (value < magCalibration.minx) magCalibration.minx = value;
-    clock_delay_usec(450);
+    clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Y);
     if (value > magCalibration.maxy) magCalibration.maxy = value;
     if (value < magCalibration.miny) magCalibration.miny = value;
-    clock_delay_usec(450);
+    clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Z);
     if (value > magCalibration.maxz) magCalibration.maxz = value;
     if (value < magCalibration.minz) magCalibration.minz = value;
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
-    clock_delay_usec(500);
+    clock_delay_usec(1000);
 }
 
 /* Format the data to be displayed -------------------------------------------*/

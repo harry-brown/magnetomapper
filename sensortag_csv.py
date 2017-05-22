@@ -6,7 +6,7 @@ import serial
 
 WAIT = 0.5 # wait time in seconds between each poll
 NSAMPLES = 4 # number of samples to poll before averaging
-COM = 'COM5' # COM port of sensortag
+COM = 'COM3' # COM port of sensortag
 
 
 if __name__ == "__main__":
@@ -23,39 +23,45 @@ if __name__ == "__main__":
         headers = False
     csvWriter = csv.writer(csvFile)
 
-    while True: # program loop
-        posInput = raw_input("Please enter comma seperated x and y position: \r\n")
-        x, y = posInput.split(',')
-        x = int(x)
-        y = int(y)
-        dataPoints = []
-        # print x, y
-        print "Reading sensortag...\r\n"
-        for _ in range(NSAMPLES): # polling loop
-            s.write("\npoll\x0A")
+    try:
+        while True: # program loop
+            posInput = raw_input("Please enter comma seperated x and y position: \r\n")
+            x, y = posInput.split(',')
+            x = int(x)
+            y = int(y)
+            dataPoints = []
+            # print x, y
+            print "Reading sensortag...\r\n"
+            for _ in range(NSAMPLES): # polling loop
+                s.write("\npoll\x0A")
+                try:
+                    rawData = s.readline()
+                    # print rawData
+                except Exception, e:
+                    print "Error reading data: " + e + "\r\n"
+
+                data = json.loads(rawData)
+                data['posx'] = x
+                data['posy'] = y
+                dataPoints.append(data)
+                time.sleep(WAIT)
+
+            # Average the data
+            data = {k: sum(dPoint[k] for dPoint in dataPoints)/len(dataPoints) for k in dataPoints[0]}
+
+            # data has been read and averaged, now write in csv
             try:
-                rawData = s.readline()
-                # print rawData
+                # if there are no headers written yet
+                if not headers:
+                    csvWriter.writerow(data.keys())
+                    headers = True
+
+                csvWriter.writerow(data.values())
             except Exception, e:
-                print "Error reading data: " + e + "\r\n"
-
-            data = json.loads(rawData)
-            data['posx'] = x
-            data['posy'] = y
-            dataPoints.append(data)
-            time.sleep(WAIT)
-
-        # Average the data
-        data = {k: sum(dPoint[k] for dPoint in dataPoints)/len(dataPoints) for k in dataPoints[0]}
-
-        # data has been read and averaged, now write in csv
-        try:
-            # if there are no headers written yet
-            if not headers:
-                csvWriter.writerow(data.keys())
-                headers = True
-
-            csvWriter.writerow(data.values())
-        except Exception, e:
-            print "Error writing data: " + e + "\r\n"
+                print "Error writing data: " + e + "\r\n"
+    except KeyboardInterrupt:
+        s.close()
+        print "Serial port closed"
+        csvFile.close()
+            
 
