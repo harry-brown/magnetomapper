@@ -6,7 +6,7 @@ import serial
 
 WAIT = 0.1 # wait time in seconds between each poll
 NSAMPLES = 5 # number of samples to poll before averaging
-COM = 'COM12' # COM port of sensortag
+COM = 'COM4' # COM port of sensortag
 
 
 if __name__ == "__main__":
@@ -63,5 +63,5 @@ if __name__ == "__main__":
         s.close()
         print "Serial port closed"
         csvFile.close()
-            
+
 
