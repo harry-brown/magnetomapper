@@ -74,42 +74,42 @@ static int calibrate_mag_reading(int raw, int type)
     
     switch (type){
         case MPU_9250_SENSOR_TYPE_MAG_X:
-            if ((raw > magCalibration.maxx) || (raw < magCalibration.minx)){
-                if (raw > magCalibration.maxx) magCalibration.maxx = raw;
-                if (raw < magCalibration.minx) magCalibration.minx = raw;
-                magBias[0] = ((magCalibration.maxx + magCalibration.minx) / 2);
-                magScale[3] = ((magCalibration.maxx - magCalibration.minx) / 2);
-                averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
-                magScale[0] = averageScale / magScale[3];
-                magScale[1] = averageScale / magScale[4];
-                magScale[2] = averageScale / magScale[5];
-            }
+            // if ((raw > magCalibration.maxx) || (raw < magCalibration.minx)){
+            //     if (raw > magCalibration.maxx) magCalibration.maxx = raw;
+            //     if (raw < magCalibration.minx) magCalibration.minx = raw;
+            //     magBias[0] = ((magCalibration.maxx + magCalibration.minx) / 2);
+            //     magScale[3] = ((magCalibration.maxx - magCalibration.minx) / 2);
+            //     averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
+            //     magScale[0] = averageScale / magScale[3];
+            //     magScale[1] = averageScale / magScale[4];
+            //     magScale[2] = averageScale / magScale[5];
+            // }
             calibrated = (calibrated - magBias[0]) * magScale[0];
             break;
         case MPU_9250_SENSOR_TYPE_MAG_Y:
-            if ((raw > magCalibration.maxy) || (raw < magCalibration.miny)){
-                if (raw > magCalibration.maxy) magCalibration.maxy = raw;
-                if (raw < magCalibration.miny) magCalibration.miny = raw;
-                magBias[1] = ((magCalibration.maxy + magCalibration.miny) / 2);
-                magScale[4] = ((magCalibration.maxy - magCalibration.miny) / 2);
-                averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
-                magScale[0] = averageScale / magScale[3];
-                magScale[1] = averageScale / magScale[4];
-                magScale[2] = averageScale / magScale[5];
-            }
+            // if ((raw > magCalibration.maxy) || (raw < magCalibration.miny)){
+            //     if (raw > magCalibration.maxy) magCalibration.maxy = raw;
+            //     if (raw < magCalibration.miny) magCalibration.miny = raw;
+            //     magBias[1] = ((magCalibration.maxy + magCalibration.miny) / 2);
+            //     magScale[4] = ((magCalibration.maxy - magCalibration.miny) / 2);
+            //     averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
+            //     magScale[0] = averageScale / magScale[3];
+            //     magScale[1] = averageScale / magScale[4];
+            //     magScale[2] = averageScale / magScale[5];
+            // }
             calibrated = (calibrated - magBias[1]) * magScale[1];
             break;
         case MPU_9250_SENSOR_TYPE_MAG_Z:
-            if ((raw > magCalibration.maxz) || (raw < magCalibration.minz)){
-                if (raw > magCalibration.maxz) magCalibration.maxz = raw;
-                if (raw < magCalibration.minz) magCalibration.minz = raw;
-                magBias[2] = ((magCalibration.maxz + magCalibration.minz) / 2);
-                magScale[5] = ((magCalibration.maxz - magCalibration.minz) / 2);
-                averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
-                magScale[0] = averageScale / magScale[3];
-                magScale[1] = averageScale / magScale[4];
-                magScale[2] = averageScale / magScale[5];
-            }
+            // if ((raw > magCalibration.maxz) || (raw < magCalibration.minz)){
+            //     if (raw > magCalibration.maxz) magCalibration.maxz = raw;
+            //     if (raw < magCalibration.minz) magCalibration.minz = raw;
+            //     magBias[2] = ((magCalibration.maxz + magCalibration.minz) / 2);
+            //     magScale[5] = ((magCalibration.maxz - magCalibration.minz) / 2);
+            //     averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
+            //     magScale[0] = averageScale / magScale[3];
+            //     magScale[1] = averageScale / magScale[4];
+            //     magScale[2] = averageScale / magScale[5];
+            // }
             calibrated = (calibrated - magBias[2]) * magScale[2];
             break;
         default:
@@ -141,17 +141,17 @@ static void get_mpu_reading()
 
     printf(", \"magx\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
-    // value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_X);
+    value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_X);
     print_mpu_reading(value);
 
     printf(", \"magy\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Y);
-    // value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Y);
+    value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Y);
     print_mpu_reading(value);
 
     printf(", \"magz\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Z);
-    // value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Z);
+    value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Z);
     print_mpu_reading(value);
 
     printf("}\n");
