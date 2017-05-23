@@ -4,9 +4,9 @@ import csv
 import os.path
 import serial
 
-WAIT = 0.5 # wait time in seconds between each poll
-NSAMPLES = 4 # number of samples to poll before averaging
-COM = 'COM3' # COM port of sensortag
+WAIT = 0.1 # wait time in seconds between each poll
+NSAMPLES = 5 # number of samples to poll before averaging
+COM = 'COM12' # COM port of sensortag
 
 
 if __name__ == "__main__":
