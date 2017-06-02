@@ -25,22 +25,21 @@ class monte_carlo_localizer:
 
         self.w = numpy.ones((self.npart,1))
 
-        for i in range(self.npart):
-            # generate random starting location
-            self.x_t[i, 0] = numpy.random.rand() * (self.map_x-1)
-            self.x_t[i, 1] = numpy.random.rand() * (self.map_y-1)
+        # generate random starting location
+        self.x_t[:, 0] = numpy.random.rand(self.npart) * (self.map_x-1)
+        self.x_t[:, 1] = numpy.random.rand(self.npart) * (self.map_y-1)
 
-            # generate random heading
-            self.x_t[i, 2] = (numpy.random.rand() * 2) -1
-            self.x_t[i, 3] = (numpy.random.rand() * 2) -1
+        # generate random heading
+        self.x_t[:, 2] = (numpy.random.rand(self.npart) * 2) -1
+        self.x_t[:, 3] = (numpy.random.rand(self.npart) * 2) -1
+
 
     # updates the state of each particle based on it's state, essentialy moves
     # the particle position by it's velocity value
     def motion_update(self, speed):
-        
-        for i in range(self.npart):
-            self.x_t[i, 0] = self.x_t[i, 0] + self.x_t[i, 2]
-            self.x_t[i, 1] = self.x_t[i, 1] + self.x_t[i, 3]
+    
+        self.x_t[:, 0] = self.x_t[:, 0] + self.x_t[:, 2]
+        self.x_t[:, 1] = self.x_t[:, 1] + self.x_t[:, 3]
 
 
     # updates the weights of each particle, weight is inversely proportional to 
@@ -48,17 +47,32 @@ class monte_carlo_localizer:
     # current position
     def sensor_update(self, measurement):
 
+        # get indices of particles that have left the map
+        ind1 = numpy.where(self.x_t[:, 0] < 0) 
+        ind2 = numpy.where(self.x_t[:, 0] > self.map_x-1) 
+        ind3 = numpy.where(self.x_t[:, 1] < 0)
+        ind4 = numpy.where(self.x_t[:, 1] > self.map_y-1)
+        invalid = numpy.union1d(numpy.union1d(ind1[0],ind2[0]),numpy.union1d(ind3[0],ind4[0]))
 
-        for i in range(self.npart):
+        # discard by setting weight to 0
+        self.w[invalid] = 0
+        
+        # get all valid particles
+        valid = numpy.setdiff1d(range(self.npart),invalid)
 
-            # if particle has left the map, discard
-            if (self.x_t[i, 0] < 0) or (self.x_t[i, 0] > self.map_x-1) or (self.x_t[i, 1] < 0) or (self.x_t[i, 1] > self.map_y-1):
-                self.w[i] = 0
-            else:
-                # weight is inverse of difference between map and measurement
-                map_val = self.map[int(self.x_t[i, 0]),int(self.x_t[i, 1])]
-                self.w[i] = 1/(0.0001+abs(measurement - map_val)**3)
+        # get corresponding map values
+        x = numpy.rint(self.x_t[valid,0].ravel())
+        y = numpy.rint(self.x_t[valid,1].ravel())
+        map_vals = self.map[x.astype(int),y.astype(int)]
 
+        # calculate weights
+        weights = 1/(0.00001 + abs(measurement - map_vals)**2)
+
+        # update weights
+        self.w[valid,0] = weights
+
+
+    # Performs the resampling of the new particle set from the old particle set   
     def resample_particles(self):
 
         # initialise the new sample array
@@ -66,44 +80,33 @@ class monte_carlo_localizer:
 
         # normalise weights
         w_total = sum(self.w)
-        w_pick = []
-        indices = []
+        self.w = self.w / w_total
 
-        for i in range(self.npart):
-
-            self.w[i] = self.w[i] / w_total
-
-            if self.w[i] > 0:
-                w_pick.append(self.w[i, 0])
-                indices.append(i)
-
-        # print(w_pick)
-        # print(indices)
+        # get all non-zero weights and matching indices
+        indices = numpy.where(self.w[:,0] != 0)
+        indices = indices[0]
+        w_pick = self.w[indices,0]
         
-        # resample based on weights
-        for i in range(int(self.npart*0.8)):
+        # randomly resample from old particles based on probability
+        index = numpy.random.choice(indices, size=int(self.npart*0.8), p=w_pick)
+        new_x_t[range(int(self.npart*0.8))] = self.x_t[index]
 
-            # choose new particle based on weights
-            index = numpy.random.choice(indices, p=w_pick)
-            new_x_t[i] = self.x_t[index]
+        # add some noise to the newly sampled particles
+        new_x_t[range(int(self.npart*0.8)), 0] = new_x_t[range(int(self.npart*0.8)), 0] + (numpy.random.rand(int(self.npart*0.8)) * 2) - 1
+        new_x_t[range(int(self.npart*0.8)), 1] = new_x_t[range(int(self.npart*0.8)), 1] + (numpy.random.rand(int(self.npart*0.8)) * 2) - 1
 
-            #add some noise to the selection
-            new_x_t[i, 0] = new_x_t[i, 0] + (numpy.random.rand() * 2) - 1
-            new_x_t[i, 1] = new_x_t[i, 1] + (numpy.random.rand() * 2) - 1
-
-            new_x_t[i, 2] = new_x_t[i, 2] + (numpy.random.rand() * 2) -1
-            new_x_t[i, 3] = new_x_t[i, 3] + (numpy.random.rand() * 2) -1
+        new_x_t[range(int(self.npart*0.8)), 2] = new_x_t[range(int(self.npart*0.8)), 2] + (numpy.random.rand(int(self.npart*0.8)) * 2) -1
+        new_x_t[range(int(self.npart*0.8)), 3] = new_x_t[range(int(self.npart*0.8)), 3] + (numpy.random.rand(int(self.npart*0.8)) * 2) -1
 
         #always regenerate some particles entirely randomly to prevent particle deprivation
-        for i in range(int(self.npart*0.2)):
 
-            #generate random starting location
-            new_x_t[int(self.npart*0.8) + i, 0] = numpy.random.rand() * (self.map_x-1)
-            new_x_t[int(self.npart*0.8) + i, 1] = numpy.random.rand() * (self.map_y-1)
+        # generate random starting location
+        new_x_t[int(self.npart*0.8):self.npart-1, 0] = numpy.random.rand(int(self.npart*0.2)-1) * (self.map_x-1)
+        new_x_t[int(self.npart*0.8):self.npart-1, 1] = numpy.random.rand(int(self.npart*0.2)-1) * (self.map_y-1)
 
-            #generate random heading
-            new_x_t[int(self.npart*0.8) + i, 2] = (numpy.random.rand() * 2) -1
-            new_x_t[int(self.npart*0.8) + i, 3] = (numpy.random.rand() * 2) -1
+        # generate random heading
+        new_x_t[int(self.npart*0.8):self.npart-1, 2] = (numpy.random.rand(int(self.npart*0.2)-1) * 2) -1
+        new_x_t[int(self.npart*0.8):self.npart-1, 3] = (numpy.random.rand(int(self.npart*0.2)-1) * 2) -1
 
         # store new particles 
         self.x_t = new_x_t
@@ -125,9 +128,8 @@ class monte_carlo_localizer:
 
         # calculate new mean pos
         pos = numpy.array([0, 0]);
-        for i in range(self.npart):
-            pos[0] = pos[0] + self.x_t[i, 0]
-            pos[1] = pos[1] + self.x_t[i, 1]
+        pos[0] = sum(self.x_t[:, 0])
+        pos[1] = sum(self.x_t[:, 1])
         mcl.pos = pos / self.npart
 
 
@@ -135,38 +137,33 @@ if __name__ == "__main__":
 
     # map of hallway
     hall_map = numpy.random.randint(0,100,size=[100, 100])
-    #hall_map = numpy.ones([50,50])
-
-    print('Map')
-    print(hall_map)
-    print(' ')
 
     # sequence of measurements
     sensor_seq = hall_map[20, 20:80];
-
     sensor_seq = numpy.append(sensor_seq,hall_map[20:50, 80])
-
     sensor_seq = numpy.append(sensor_seq,hall_map[50, 10:80])
+    for i in range(50):
+        sensor_seq = numpy.append(sensor_seq, hall_map[50,80])
+
+    # add some noise to the measurements
+    # sensor_seq = sensor_seq + numpy.random.randn(sensor_seq.size)
         
     #list of locations
-    seq_length = 160
+    seq_length = 210
     start_pos = numpy.array([20,20])
-
-    print('Sequence')
-    print(sensor_seq)
-    print(' ')
-
+    true_location = start_pos
     # velocity estimate
     speed = 1
 
-    num_particles = 4000
+    # number of particles (more = more accurate but also slower)
+    num_particles = 10000
 
     # particle filter initialise
     mcl = monte_carlo_localizer(num_particles, hall_map)
 
     fig = plt.figure()
 
-    # plot the results
+    # plot the initial distribution of particles
     plt.scatter(mcl.x_t[:,0], mcl.x_t[:,1], s=0.2, c='k', marker='o', label="particles")
     plt.scatter(20, 20, s=10, c='g', marker='o', edgecolors='g', label="true location")
     #plt.plot(range(mcl.map_length),pdf*mcl.npart*10, label='kde')
@@ -175,6 +172,7 @@ if __name__ == "__main__":
     plt.ylim([0, mcl.map_y])
     plt.xlim([0, mcl.map_x])
     plt.pause(0.5)
+
 
     # simulation
     for i in range(seq_length):
@@ -189,32 +187,39 @@ if __name__ == "__main__":
 
         # get the location using kde, rather than simple mean
 
-        # # this create the kernel, given an array it will estimate the probability over that values
-        # kde = gaussian_kde( numpy.transpose(numpy.transpose(mcl.x_t[:,1:2])) )
-        # # these are the values over wich your kernel will be evaluated
-        # X,Y = np.mgrid[range(50)-1,range(50)-1]
-        # positions = np.vstack([X.ravel(),Y.ravel()])
-        # pdf = kde(positions);
-        # inds = numpy.argmax(pdf) #redo this
-        # est = numpy.mean(inds) #redo this
+        # this create the kernel, given an array it will estimate the probability over that values
+        kde = gaussian_kde( numpy.stack([mcl.x_t[:,0].ravel(), mcl.x_t[:,1].ravel()]) )
 
-        # print('Estimate')
-        # print(mcl.pos)
+        # these are the values over wich your kernel will be evaluated
+        X,Y = numpy.mgrid[range(mcl.map_x), range(mcl.map_y)]
+        positions = numpy.stack([X.ravel(),Y.ravel()])
+
+        # evaluate kernel
+        pdf = kde(positions);
+
+        # get index of maximum
+        inds = pdf.argmax()
+
+        # get map position of maximum
+        est = positions[:, int(numpy.mean(inds))]
 
         if (i < 60):
-            true_location = numpy.array([20, 20+i])
+            true_location[0] = 20
+            true_location[1] = 20+i
         elif (i < 90):
-            true_location = numpy.array([20+(i-60),80])
+            true_location[0] = 20+(i-60)
+            true_location[1] = 80
+        elif (i < 160):
+            true_location[0] = 50
+            true_location[1] = 10+(i-90)
         else:
-            true_location = numpy.array([50,10 + (i-90)])
-            
-        # print('True Location')
-        # print(true_location)
-        # print(' ')
+            true_location[0] = 50
+            true_location[1] = 80
 
         # plot the results
+        plt.imshow(numpy.rot90(numpy.reshape(pdf.T, X.shape)), cmap=plt.cm.gist_earth_r, extent=[0, mcl.map_x, 0, mcl.map_y],  label="kernel")
         plt.scatter(mcl.x_t[:,0], mcl.x_t[:,1], s=0.2, c='k', marker='o', label="particles")
-        plt.scatter(mcl.pos[0], mcl.pos[1], s=10, c='red', marker='o', label="estimated location")
+        plt.scatter(est[0], est[1], s=10, c='red', marker='o', label="estimated location")
         plt.scatter(true_location[0], true_location[1], s=10, c='g', marker='o', edgecolors='g', label="true location")
         #plt.plot(range(mcl.map_length),pdf*mcl.npart*10, label='kde')
         plt.xlabel('x [m]')
