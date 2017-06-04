@@ -91,5 +91,5 @@ def udpPoll(sock):
         rawData, addr = sock.recvfrom(1024)
     except Exception, e:
         print "Error reading data: " + e + "\r\n"
-    
+
     return rawData
