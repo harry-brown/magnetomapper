@@ -2,16 +2,25 @@ import json
 import time
 import csv
 import os.path
+import socket
+import struct
 import serial
+
+
+SERIAL = False
 
 WAIT = 0.5 # wait time in seconds between each poll
 NSAMPLES = 4 # number of samples to poll before averaging
+
+# Serial Settings
 COM = 'COM5' # COM port of sensortag
 
+# UDP Settings
+SEND_PORT = 4003
+RECV_PORT = 7005
+TAG_ADDR = "aaaa::212:4b00:7b4:e600"
 
 if __name__ == "__main__":
-    s = serial.Serial(port=COM, baudrate=115200)
-
     filepath = './Sensortag.csv'
     if os.path.isfile(filepath):
         # file already exists, append to it
@@ -23,6 +32,13 @@ if __name__ == "__main__":
         headers = False
     csvWriter = csv.writer(csvFile)
 
+    # setup comms interface
+    if SERIAL:
+        s = serial.Serial(port=COM, baudrate=115200)
+    else:
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, 0)
+        sock.bind(('', RECV_PORT))
+
     while True: # program loop
         posInput = raw_input("Please enter comma seperated x and y position: \r\n")
         x, y = posInput.split(',')
@@ -32,16 +48,13 @@ if __name__ == "__main__":
         # print x, y
         print "Reading sensortag...\r\n"
         for _ in range(NSAMPLES): # polling loop
-            s.write("\npoll\x0A")
-            try:
-                rawData = s.readline()
-                # print rawData
-            except Exception, e:
-                print "Error reading data: " + e + "\r\n"
-
+            if SERIAL:
+                rawData = serialPoll(s)
+            else: # udp
+                rawData = udpPoll(sock)
             data = json.loads(rawData)
             data['posx'] = x
-            data['posy'] = y
+            data['posy'] = y   
             dataPoints.append(data)
             time.sleep(WAIT)
 
@@ -59,3 +72,21 @@ if __name__ == "__main__":
         except Exception, e:
             print "Error writing data: " + e + "\r\n"
 
+def serialPoll(s):
+    s.write("\npoll\x0A")
+    try:
+        rawData = s.readline()
+        # print rawData
+    except Exception, e:
+        print "Error reading data: " + e + "\r\n"
+
+    return rawData
+
+def udpPoll(sock):
+    sock.sendto(struct.pack("I", "poll"), (TAG_ADDR, SEND_PORT))
+    try:
+        rawData, addr = sock.recvfrom(1024)
+    except Exception, e:
+        print "Error reading data: " + e + "\r\n"
+    
+    return rawData
