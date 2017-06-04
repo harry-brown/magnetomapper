@@ -12,7 +12,7 @@
 #include "mapper.h"
 
 /* Defines -------------------------------------------------------------------*/
-// #define DEBUG
+// #define DEBUG DEBUG_PRINT
 #ifdef DEBUG
 #define PRINTF(...) printf(__VA_ARGS__)
 #else
@@ -22,27 +22,36 @@
 /* Threads -------------------------------------------------------------------*/
 PROCESS(main_process, "Main process");
 PROCESS(mpu_sensor_process, "MPU Sensor process");
+PROCESS(udp_client_process, "UDP client process");
 PROCESS(button_input_process, "Button Input process");
-AUTOSTART_PROCESSES(&main_process, &mpu_sensor_process, &button_input_process);
+AUTOSTART_PROCESSES(&main_process, &mpu_sensor_process, &udp_client_process, &button_input_process);
 
 /* Variables -----------------------------------------------------------------*/
-static uint8_t calibrating = 0;
 static uint16_t calibration_samples = 0;
 static uint16_t number_samples = 100;
 
 float magBias[3], magScale[6], averageScale;
 
+enum communicationModes {
+    SERIAL = 1,
+    UDP = 2,
+    CALIBRATION = 4
+} mode;
+
+static struct uip_udp_conn *client_conn;
+
 /* Timers --------------------------------------------------------------------*/
 static struct ctimer alive_timer;
 
-static struct MagnetometerCalibration{
+static struct MagnetometerCalibration
+{
     int maxx;
     int minx;
     int maxy;
     int miny;
     int maxz;
     int minz;
-} magCalibration = {-10000,10000,-10000,10000,-10000,10000};
+} magCalibration = {-10000, 10000, -10000, 10000, -10000, 10000};
 
 /* Initialisation ------------------------------------------------------------*/
 static void init(void)
@@ -57,7 +66,6 @@ static void alive_timeout(void *ptr)
 {
     leds_toggle(LEDS_GREEN);    // Blink an LED to show alive status
     ctimer_reset(&alive_timer); // Reset 500ms timer
-    
 }
 
 /* Initiate a reading from the MPU9250 Sensor --------------------------------*/
@@ -71,50 +79,21 @@ static void init_mpu_reading(void *not_used)
 static int calibrate_mag_reading(int raw, int type)
 {
     int calibrated = raw;
-    
-    switch (type){
-        case MPU_9250_SENSOR_TYPE_MAG_X:
-            // if ((raw > magCalibration.maxx) || (raw < magCalibration.minx)){
-            //     if (raw > magCalibration.maxx) magCalibration.maxx = raw;
-            //     if (raw < magCalibration.minx) magCalibration.minx = raw;
-            //     magBias[0] = ((magCalibration.maxx + magCalibration.minx) / 2);
-            //     magScale[3] = ((magCalibration.maxx - magCalibration.minx) / 2);
-            //     averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
-            //     magScale[0] = averageScale / magScale[3];
-            //     magScale[1] = averageScale / magScale[4];
-            //     magScale[2] = averageScale / magScale[5];
-            // }
-            calibrated = (calibrated - magBias[0]) * magScale[0];
-            break;
-        case MPU_9250_SENSOR_TYPE_MAG_Y:
-            // if ((raw > magCalibration.maxy) || (raw < magCalibration.miny)){
-            //     if (raw > magCalibration.maxy) magCalibration.maxy = raw;
-            //     if (raw < magCalibration.miny) magCalibration.miny = raw;
-            //     magBias[1] = ((magCalibration.maxy + magCalibration.miny) / 2);
-            //     magScale[4] = ((magCalibration.maxy - magCalibration.miny) / 2);
-            //     averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
-            //     magScale[0] = averageScale / magScale[3];
-            //     magScale[1] = averageScale / magScale[4];
-            //     magScale[2] = averageScale / magScale[5];
-            // }
-            calibrated = (calibrated - magBias[1]) * magScale[1];
-            break;
-        case MPU_9250_SENSOR_TYPE_MAG_Z:
-            // if ((raw > magCalibration.maxz) || (raw < magCalibration.minz)){
-            //     if (raw > magCalibration.maxz) magCalibration.maxz = raw;
-            //     if (raw < magCalibration.minz) magCalibration.minz = raw;
-            //     magBias[2] = ((magCalibration.maxz + magCalibration.minz) / 2);
-            //     magScale[5] = ((magCalibration.maxz - magCalibration.minz) / 2);
-            //     averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
-            //     magScale[0] = averageScale / magScale[3];
-            //     magScale[1] = averageScale / magScale[4];
-            //     magScale[2] = averageScale / magScale[5];
-            // }
-            calibrated = (calibrated - magBias[2]) * magScale[2];
-            break;
-        default:
-            return 0;
-            break;
+
+    switch (type)
+    {
+    case MPU_9250_SENSOR_TYPE_MAG_X:
+        calibrated = (calibrated - magBias[0]) * magScale[0];
+        break;
+    case MPU_9250_SENSOR_TYPE_MAG_Y:
+        calibrated = (calibrated - magBias[1]) * magScale[1];
+        break;
+    case MPU_9250_SENSOR_TYPE_MAG_Z:
+        calibrated = (calibrated - magBias[2]) * magScale[2];
+        break;
+    default:
+        return 0;
+        break;
     }
 
     return calibrated;
@@ -124,37 +103,56 @@ static int calibrate_mag_reading(int raw, int type)
 static void get_mpu_reading()
 {
     int value;
+    char str[160];
+    int delay_between_readings = 500;
 
-    printf("{");
+    sprintf(str, "{");
 
-    printf("\"accx\": ");
+    sprintf(str + strlen(str), "\"accx\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_X);
-    print_mpu_reading(value);
+    sprint_mpu_reading(value, str);
+    clock_delay_usec(delay_between_readings);
 
-    printf(", \"accy\": ");
+    sprintf(str + strlen(str), ", \"accy\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Y);
-    print_mpu_reading(value);
+    sprint_mpu_reading(value, str);
+    clock_delay_usec(delay_between_readings);
 
-    printf(", \"accz\": ");
+    sprintf(str + strlen(str), ", \"accz\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Z);
-    print_mpu_reading(value);
+    sprint_mpu_reading(value, str);
+    clock_delay_usec(delay_between_readings);
 
-    printf(", \"magx\": ");
+    sprintf(str + strlen(str), ", \"magx\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_X);
-    print_mpu_reading(value);
+    sprint_mpu_reading(value, str);
+    clock_delay_usec(delay_between_readings);
 
-    printf(", \"magy\": ");
+    sprintf(str + strlen(str), ", \"magy\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Y);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Y);
-    print_mpu_reading(value);
+    sprint_mpu_reading(value, str);
+    clock_delay_usec(delay_between_readings);
 
-    printf(", \"magz\": ");
+    sprintf(str + strlen(str), ", \"magz\": ");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Z);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Z);
-    print_mpu_reading(value);
+    sprint_mpu_reading(value, str);
+    clock_delay_usec(delay_between_readings);
 
-    printf("}\n");
+    sprintf(str + strlen(str), "}\n");
+
+    switch (mode) {
+        case SERIAL:
+            printf("%s", str);
+            break;
+        case UDP:
+            //send udp data
+            break;
+        default:
+            break;
+    };
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
 }
@@ -163,34 +161,151 @@ static void get_mpu_reading()
 static void calibrate_mag()
 {
     int value;
-    
+
     clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
-    if (value > magCalibration.maxx) magCalibration.maxx = value;
-    if (value < magCalibration.minx) magCalibration.minx = value;
+    if (value > magCalibration.maxx)
+        magCalibration.maxx = value;
+    if (value < magCalibration.minx)
+        magCalibration.minx = value;
     clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Y);
-    if (value > magCalibration.maxy) magCalibration.maxy = value;
-    if (value < magCalibration.miny) magCalibration.miny = value;
+    if (value > magCalibration.maxy)
+        magCalibration.maxy = value;
+    if (value < magCalibration.miny)
+        magCalibration.miny = value;
     clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Z);
-    if (value > magCalibration.maxz) magCalibration.maxz = value;
-    if (value < magCalibration.minz) magCalibration.minz = value;
+    if (value > magCalibration.maxz)
+        magCalibration.maxz = value;
+    if (value < magCalibration.minz)
+        magCalibration.minz = value;
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
     clock_delay_usec(1000);
 }
 
 /* Format the data to be displayed -------------------------------------------*/
-static void print_mpu_reading(int reading)
+static void sprint_mpu_reading(int reading, char* buffer)
 {
     if (reading < 0)
     {
-        printf("-");
+        sprintf(buffer + strlen(buffer), "-");
         reading = -reading;
     }
 
-    printf("%d.%02d", reading / 100, reading % 100);
+    sprintf(buffer + strlen(buffer), "%d.%02d", reading / 100, reading % 100);
+}
+
+/* Print local address -------------------------------------------------------*/
+static void
+print_local_addresses(void)
+{
+    int i;
+    uint8_t state;
+
+    PRINTF("Client IPv6 addresses: ");
+    for (i = 0; i < UIP_DS6_ADDR_NB; i++)
+    {
+        state = uip_ds6_if.addr_list[i].state;
+        if (uip_ds6_if.addr_list[i].isused &&
+            (state == ADDR_TENTATIVE || state == ADDR_PREFERRED))
+        {
+            PRINT6ADDR(&uip_ds6_if.addr_list[i].ipaddr);
+            PRINTF("\n\r");
+        }
+    }
+}
+
+/* Set global address --------------------------------------------------------*/
+#if UIP_CONF_ROUTER
+static void
+set_global_address(void)
+{
+    uip_ipaddr_t ipaddr;
+
+    uip_ip6addr(&ipaddr, 0xaaaa, 0, 0, 0, 0, 0, 0, 0);
+    uip_ds6_set_addr_iid(&ipaddr, &uip_lladdr);
+    uip_ds6_addr_add(&ipaddr, 0, ADDR_AUTOCONF);
+}
+#endif /* UIP_CONF_ROUTER */
+
+/* Set the connection address ------------------------------------------------*/
+static resolv_status_t
+set_connection_address(uip_ipaddr_t *ipaddr)
+{
+#ifndef UDP_CONNECTION_ADDR
+#if RESOLV_CONF_SUPPORTS_MDNS
+#define UDP_CONNECTION_ADDR \
+    aaaa:                   \
+    0 : 0 : 0 : 0 : 0 : 0 : 1
+// #define UDP_CONNECTION_ADDR       aaaa:0:0:0:0212:4b00:07b5:1d03
+// #define UDP_CONNECTION_ADDR       contiki-udp-server.local
+#elif UIP_CONF_ROUTER
+#define UDP_CONNECTION_ADDR \
+    aaaa:                   \
+    0 : 0 : 0 : 0212 : 7404 : 0004 : 0404
+#else
+#define UDP_CONNECTION_ADDR \
+    fe80:                   \
+    0 : 0 : 0 : 6466 : 6666 : 6666 : 6666
+#endif
+#endif /* !UDP_CONNECTION_ADDR */
+
+#define _QUOTEME(x) #x
+#define QUOTEME(x) _QUOTEME(x)
+
+    resolv_status_t status = RESOLV_STATUS_ERROR;
+
+    if (uiplib_ipaddrconv(QUOTEME(UDP_CONNECTION_ADDR), ipaddr) == 0)
+    {
+        uip_ipaddr_t *resolved_addr = NULL;
+        status = resolv_lookup(QUOTEME(UDP_CONNECTION_ADDR), &resolved_addr);
+        if (status == RESOLV_STATUS_UNCACHED || status == RESOLV_STATUS_EXPIRED)
+        {
+            PRINTF("Attempting to look up %s\n\r", QUOTEME(UDP_CONNECTION_ADDR));
+            resolv_query(QUOTEME(UDP_CONNECTION_ADDR));
+            status = RESOLV_STATUS_RESOLVING;
+        }
+        else if (status == RESOLV_STATUS_CACHED && resolved_addr != NULL)
+        {
+            PRINTF("Lookup of \"%s\" succeded!\n\r", QUOTEME(UDP_CONNECTION_ADDR));
+        }
+        else if (status == RESOLV_STATUS_RESOLVING)
+        {
+            PRINTF("Still looking up \"%s\"...\n\r", QUOTEME(UDP_CONNECTION_ADDR));
+        }
+        else
+        {
+            PRINTF("Lookup of \"%s\" failed. status = %d\n\r", QUOTEME(UDP_CONNECTION_ADDR), status);
+        }
+        if (resolved_addr)
+            uip_ipaddr_copy(ipaddr, resolved_addr);
+    }
+    else
+    {
+        status = RESOLV_STATUS_CACHED;
+    }
+
+    return status;
+}
+
+/* TCP/IP Message Handler --------------------------------------------------------------*/
+static void tcpip_handler(void)
+{
+    char *str;
+
+    if (uip_newdata())
+    {
+        str = uip_appdata;
+        str[uip_datalen()] = '\0';
+
+        if (strcmp(str, "poll") == 0)
+        {
+            init_mpu_reading(NULL);
+            mode = UDP;
+        }
+    }
 }
 
 /* Main Process --------------------------------------------------------------*/
@@ -215,6 +330,7 @@ PROCESS_THREAD(main_process, ev, data)
             if (strcmp(data, "poll") == 0)
             {
                 init_mpu_reading(NULL);
+                mode = SERIAL;
             }
         }
     }
@@ -238,11 +354,13 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
         //Check for Thermopile reading
         if (ev == sensors_event && data == &mpu_9250_sensor)
         {
-            if (calibrating)
+            if (mode == CALIBRATION)
             {
                 calibrate_mag();
-                if (calibration_samples++ > number_samples){
-                    calibrating = 0;
+                if (calibration_samples++ > number_samples)
+                {
+                    mode = SERIAL;
+                    
                     magBias[0] = ((magCalibration.maxx + magCalibration.minx) / 2);
                     magBias[1] = ((magCalibration.maxy + magCalibration.miny) / 2);
                     magBias[2] = ((magCalibration.maxz + magCalibration.minz) / 2);
@@ -251,15 +369,18 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
                     magScale[4] = ((magCalibration.maxy - magCalibration.miny) / 2);
                     magScale[5] = ((magCalibration.maxz - magCalibration.minz) / 2);
 
-                    averageScale = (magScale[3] + magScale[4] + magScale[5])/15;
+                    averageScale = (magScale[3] + magScale[4] + magScale[5]) / 15;
 
                     magScale[0] = averageScale / magScale[3];
                     magScale[1] = averageScale / magScale[4];
                     magScale[2] = averageScale / magScale[5];
 
                     printf(" Complete!\n");
-                }else{
+                }
+                else
+                {
                     init_mpu_reading(NULL);
+                    mode = CALIBRATION;
                 }
             }
             else
@@ -269,6 +390,58 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
         }
     }
     PROCESS_END(); //End of thread
+}
+
+/* UDP Client Process --------------------------------------------------------*/
+PROCESS_THREAD(udp_client_process, ev, data)
+{
+    uip_ipaddr_t ipaddr;
+
+    PROCESS_BEGIN();
+    PRINTF("UDP client process started\n\r");
+
+#if UIP_CONF_ROUTER
+    set_global_address();
+#endif
+
+    print_local_addresses(); //Show current address
+
+    static resolv_status_t status = RESOLV_STATUS_UNCACHED;
+    while (status != RESOLV_STATUS_CACHED)
+    {
+        status = set_connection_address(&ipaddr);
+
+        if (status == RESOLV_STATUS_RESOLVING)
+        {
+            PROCESS_WAIT_EVENT_UNTIL(ev == resolv_event_found);
+        }
+        else if (status != RESOLV_STATUS_CACHED)
+        {
+            PRINTF("Can't get connection address.\n\r");
+            PROCESS_YIELD();
+        }
+    }
+
+    /* new connection with remote host */
+    client_conn = udp_new(&ipaddr, UIP_HTONS(7005), NULL);
+    udp_bind(client_conn, UIP_HTONS(4003));
+
+    PRINTF("Created a great connection with the server ");
+    PRINT6ADDR(&client_conn->ripaddr);
+    PRINTF(" local/remote port %u/%u\n\r",
+           UIP_HTONS(client_conn->lport), UIP_HTONS(client_conn->rport));
+
+    while (1)
+    {
+        PROCESS_YIELD();
+
+        if (ev == tcpip_event)
+        {
+            tcpip_handler();
+        }
+    }
+
+    PROCESS_END();
 }
 
 /* Button Input Process ------------------------------------------------------*/
@@ -286,12 +459,15 @@ PROCESS_THREAD(button_input_process, ev, data)
         //Check if sensor event has occured from left button press
         if (ev == sensors_event && data == &button_left_sensor)
         {
-            if (calibration_samples > number_samples){
+            if (calibration_samples > number_samples)
+            {
                 printf("ping\n");
-            }else{
+            }
+            else
+            {
                 printf("Calibrating magnetometer...");
-                calibrating = 1;
                 init_mpu_reading(NULL);
+                mode = CALIBRATION;
             }
         }
     }
