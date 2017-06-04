@@ -54,7 +54,7 @@ if __name__ == "__main__":
                 rawData = udpPoll(sock)
             data = json.loads(rawData)
             data['posx'] = x
-            data['posy'] = y   
+            data['posy'] = y
             dataPoints.append(data)
             time.sleep(WAIT)
 
