@@ -29,6 +29,7 @@
 #include "lib/sensors.h"
 #include "button-sensor.h"
 #include "net/ip/uip-debug.h"
+#include "buzzer.h"
 
 #include <stdio.h>
 #include <string.h>

@@ -108,34 +108,34 @@ static void get_mpu_reading()
 
     sprintf(str, "{");
 
-    sprintf(str + strlen(str), "\"accx\": ");
+    sprintf(str + strlen(str), "\"ax\":");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_X);
     sprint_mpu_reading(value, str);
     clock_delay_usec(delay_between_readings);
 
-    sprintf(str + strlen(str), ", \"accy\": ");
+    sprintf(str + strlen(str), ",\"ay\":");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Y);
     sprint_mpu_reading(value, str);
     clock_delay_usec(delay_between_readings);
 
-    sprintf(str + strlen(str), ", \"accz\": ");
+    sprintf(str + strlen(str), ",\"az\":");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Z);
     sprint_mpu_reading(value, str);
     clock_delay_usec(delay_between_readings);
 
-    sprintf(str + strlen(str), ", \"magx\": ");
+    sprintf(str + strlen(str), ",\"mx\":");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_X);
     sprint_mpu_reading(value, str);
     clock_delay_usec(delay_between_readings);
 
-    sprintf(str + strlen(str), ", \"magy\": ");
+    sprintf(str + strlen(str), ",\"my\":");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Y);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Y);
     sprint_mpu_reading(value, str);
     clock_delay_usec(delay_between_readings);
 
-    sprintf(str + strlen(str), ", \"magz\": ");
+    sprintf(str + strlen(str), ",\"mz\":");
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_Z);
     value = calibrate_mag_reading(value, MPU_9250_SENSOR_TYPE_MAG_Z);
     sprint_mpu_reading(value, str);
@@ -148,9 +148,11 @@ static void get_mpu_reading()
             printf("%s", str);
             break;
         case UDP:
-            //send udp data
+            printf("Sending data over UDP\n");
+            uip_udp_packet_send(client_conn, str, strlen(str));
             break;
         default:
+            printf("wtf\n");
             break;
     };
 
@@ -161,7 +163,6 @@ static void get_mpu_reading()
 static void calibrate_mag()
 {
     int value;
-
     clock_delay_usec(500);
     value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_MAG_X);
     if (value > magCalibration.maxx)
@@ -182,7 +183,10 @@ static void calibrate_mag()
         magCalibration.minz = value;
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
+    
+    buzzer_start(1000);
     clock_delay_usec(1000);
+    buzzer_stop();
 }
 
 /* Format the data to be displayed -------------------------------------------*/
@@ -236,19 +240,13 @@ set_connection_address(uip_ipaddr_t *ipaddr)
 {
 #ifndef UDP_CONNECTION_ADDR
 #if RESOLV_CONF_SUPPORTS_MDNS
-#define UDP_CONNECTION_ADDR \
-    aaaa:                   \
-    0 : 0 : 0 : 0 : 0 : 0 : 1
+#define UDP_CONNECTION_ADDR       aaaa:0:0:0:0:0:0:1
 // #define UDP_CONNECTION_ADDR       aaaa:0:0:0:0212:4b00:07b5:1d03
 // #define UDP_CONNECTION_ADDR       contiki-udp-server.local
 #elif UIP_CONF_ROUTER
-#define UDP_CONNECTION_ADDR \
-    aaaa:                   \
-    0 : 0 : 0 : 0212 : 7404 : 0004 : 0404
+#define UDP_CONNECTION_ADDR       aaaa:0:0:0:0212:7404:0004:0404
 #else
-#define UDP_CONNECTION_ADDR \
-    fe80:                   \
-    0 : 0 : 0 : 6466 : 6666 : 6666 : 6666
+#define UDP_CONNECTION_ADDR       fe80:0:0:0:6466:6666:6666:6666
 #endif
 #endif /* !UDP_CONNECTION_ADDR */
 
@@ -300,8 +298,9 @@ static void tcpip_handler(void)
         str = uip_appdata;
         str[uip_datalen()] = '\0';
 
-        if (strcmp(str, "poll") == 0)
+        if ((strcmp(str, "poll") == 0) && (mode != CALIBRATION))
         {
+            PRINTF("Poll packet received\n");
             init_mpu_reading(NULL);
             mode = UDP;
         }
@@ -327,7 +326,7 @@ PROCESS_THREAD(main_process, ev, data)
         //Wait for event triggered by serial input
         if (ev == serial_line_event_message)
         {
-            if (strcmp(data, "poll") == 0)
+            if ((strcmp(data, "poll") == 0) && (mode != CALIBRATION))
             {
                 init_mpu_reading(NULL);
                 mode = SERIAL;
@@ -380,7 +379,6 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
                 else
                 {
                     init_mpu_reading(NULL);
-                    mode = CALIBRATION;
                 }
             }
             else
