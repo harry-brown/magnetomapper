@@ -152,7 +152,7 @@ static void get_mpu_reading()
             uip_udp_packet_send(client_conn, str, strlen(str));
             break;
         default:
-            printf("wtf\n");
+            printf("error\n");
             break;
     };
 
@@ -375,6 +375,9 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
                     magScale[2] = averageScale / magScale[5];
 
                     printf(" Complete!\n");
+                    buzzer_start(10000);
+                    clock_delay_usec(20000);
+                    buzzer_stop();
                 }
                 else
                 {
