@@ -471,6 +471,9 @@ mag_read(int16_t *data)
     clock_delay_usec(1);
     if (timeout++ > 1000) {
       printf("Magnetometer read failed. Not Ready.\n\r");
+      buzzer_start(500);
+      clock_delay_usec(20000);
+      buzzer_stop();
       success = false;
       return success;
     }
@@ -483,6 +486,9 @@ mag_read(int16_t *data)
     delay_ms(1);
     if (timeout++ > 1000) {
       printf("Magnetometer read failed. Read timed out\n\r");
+      buzzer_start(500);
+      clock_delay_usec(20000);
+      buzzer_stop();
       success = false;
       return success;
     }
@@ -496,6 +502,9 @@ mag_read(int16_t *data)
     // printf("\n\r%04x\n\r", data[1]);
   // } else {
     printf("Magnetometer read failed during read operation.\n\r");
+    buzzer_start(500);
+    clock_delay_usec(20000);
+    buzzer_stop();
     sensor_common_set_error_data((uint8_t *)data, DATA_SIZE);
   }
 

@@ -7,6 +7,7 @@ import struct
 import serial
 
 
+
 SERIAL = False
 
 WAIT = 0.5 # wait time in seconds between each poll
@@ -14,6 +15,7 @@ NSAMPLES = 4 # number of samples to poll before averaging
 
 # Serial Settings
 COM = 'COM5' # COM port of sensortag
+
 
 # UDP Settings
 SEND_PORT = 4003
@@ -71,6 +73,7 @@ if __name__ == "__main__":
             csvWriter.writerow(data.values())
         except Exception, e:
             print "Error writing data: " + e + "\r\n"
+
 
 def serialPoll(s):
     s.write("\npoll\x0A")

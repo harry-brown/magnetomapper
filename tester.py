@@ -1,4 +1,3 @@
-
 import time
 import serial
 
@@ -8,13 +7,13 @@ print "serial port opened"
 
 try:
     while True:
+        time.sleep(1)
+        
         s.write("\npoll\x0A")
 
         data = s.readline()
 
         print data
-
-        time.sleep(1)
 
 except KeyboardInterrupt:
     s.close()
