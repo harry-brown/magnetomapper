@@ -20,7 +20,7 @@ COM = 'COM5' # COM port of sensortag
 # UDP Settings
 SEND_PORT = 4003
 RECV_PORT = 7005
-TAG_ADDR = "aaaa::212:4b00:7b4:e600"
+TAG_ADDR = "aaaa::212:4b00:7b5:1d03"
 
 if __name__ == "__main__":
     filepath = './Sensortag.csv'
@@ -86,7 +86,7 @@ def serialPoll(s):
     return rawData
 
 def udpPoll(sock):
-    sock.sendto(struct.pack("I", "poll"), (TAG_ADDR, SEND_PORT))
+    sock.sendto("poll", (TAG_ADDR, SEND_PORT))
     try:
         rawData, addr = sock.recvfrom(1024)
     except Exception, e:
