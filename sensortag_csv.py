@@ -20,7 +20,9 @@ COM = 'COM5' # COM port of sensortag
 # UDP Settings
 SEND_PORT = 4003
 RECV_PORT = 7005
-TAG_ADDR = "aaaa::212:4b00:7b5:1d03"
+
+TAG_ADDR = "aaaa::212:4b00:c67:4803"
+#TAG_ADDR = "aaaa::212:4b00:7b5:1d03"
 
 def serialPoll(s):
     s.write("\npoll\x0A")
@@ -62,6 +64,9 @@ if __name__ == "__main__":
 
     while True: # program loop
         posInput = raw_input("Please enter comma seperated x and y position: \r\n")
+        if posInput == "stop":
+            csvFile.close()
+            quit()
         x, y = posInput.split(',')
         x = int(x)
         y = int(y)
