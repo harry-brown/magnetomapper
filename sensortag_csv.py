@@ -38,6 +38,7 @@ def udpPoll(sock):
     sock.sendto("poll", (TAG_ADDR, SEND_PORT))
     try:
         rawData, addr = sock.recvfrom(1024)
+        print rawData
     except Exception, e:
         print "Error reading data: " + e + "\r\n"
 
@@ -54,6 +55,7 @@ if __name__ == "__main__":
         csvFile = open(filepath, mode='wb')
         headers = False
     csvWriter = csv.writer(csvFile)
+    csvFile.close()
 
     # setup comms interface
     if SERIAL:
@@ -64,9 +66,6 @@ if __name__ == "__main__":
 
     while True: # program loop
         posInput = raw_input("Please enter comma seperated x and y position: \r\n")
-        if posInput == "stop":
-            csvFile.close()
-            quit()
         x, y = posInput.split(',')
         x = int(x)
         y = int(y)
@@ -89,11 +88,14 @@ if __name__ == "__main__":
 
         # data has been read and averaged, now write in csv
         try:
+            csvFile = open(filepath, mode='ab')
+            csvWriter = csv.writer(csvFile)
             # if there are no headers written yet
             if not headers:
                 csvWriter.writerow(data.keys())
                 headers = True
 
             csvWriter.writerow(data.values())
+            csvFile.close()
         except Exception, e:
-            print "Error writing data: " + e + "\r\n"
+            print "Error writing data: " + str(e) + "\r\n"
