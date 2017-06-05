@@ -22,6 +22,25 @@ SEND_PORT = 4003
 RECV_PORT = 7005
 TAG_ADDR = "aaaa::212:4b00:7b5:1d03"
 
+def serialPoll(s):
+    s.write("\npoll\x0A")
+    try:
+        rawData = s.readline()
+        # print rawData
+    except Exception, e:
+        print "Error reading data: " + e + "\r\n"
+
+    return rawData
+
+def udpPoll(sock):
+    sock.sendto("poll", (TAG_ADDR, SEND_PORT))
+    try:
+        rawData, addr = sock.recvfrom(1024)
+    except Exception, e:
+        print "Error reading data: " + e + "\r\n"
+
+    return rawData
+
 if __name__ == "__main__":
     filepath = './Sensortag.csv'
     if os.path.isfile(filepath):
@@ -73,23 +92,3 @@ if __name__ == "__main__":
             csvWriter.writerow(data.values())
         except Exception, e:
             print "Error writing data: " + e + "\r\n"
-
-
-def serialPoll(s):
-    s.write("\npoll\x0A")
-    try:
-        rawData = s.readline()
-        # print rawData
-    except Exception, e:
-        print "Error reading data: " + e + "\r\n"
-
-    return rawData
-
-def udpPoll(sock):
-    sock.sendto("poll", (TAG_ADDR, SEND_PORT))
-    try:
-        rawData, addr = sock.recvfrom(1024)
-    except Exception, e:
-        print "Error reading data: " + e + "\r\n"
-
-    return rawData
