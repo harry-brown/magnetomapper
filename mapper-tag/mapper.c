@@ -143,12 +143,16 @@ static void get_mpu_reading()
 
     sprintf(str + strlen(str), "}\n");
 
+    printf("printing now\n");
+
     switch (mode) {
         case SERIAL:
             printf("%s", str);
             break;
         case UDP:
-            printf("Sending data over UDP\n");
+            printf("Sending data over UDP: ");
+            printf("%s", str);
+            printf("\n");
             uip_udp_packet_send(client_conn, str, strlen(str));
             break;
         default:
