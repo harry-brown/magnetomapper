@@ -1,8 +1,8 @@
 import matplotlib
 #matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-import numpy
 import csv
+import numpy as np
 from scipy.stats.kde import gaussian_kde
 
 # implements a 1D monte carlo localization class,
@@ -20,13 +20,13 @@ class monte_carlo_localizer:
         self.map_length = env_map.shape[0]
 
         # generate initial random distribution of particles
-        self.x_t = numpy.zeros((self.npart, 2))
-        self.w = numpy.ones((self.npart, 1))
+        self.x_t = np.zeros((self.npart, 2))
+        self.w = np.ones((self.npart, 1))
 
         # generate random starting location
-        self.x_t[:, 0] = numpy.random.rand(self.npart) * (self.map_length-1)
+        self.x_t[:, 0] = np.random.rand(self.npart) * (self.map_length-1)
         # generate random heading
-        self.x_t[:, 1] = (numpy.random.rand(self.npart) * 6) - 3
+        self.x_t[:, 1] = (np.random.rand(self.npart) * 600) - 300
 
     # updates the state of each particle based on it's state, essentialy moves
     # the particle position by it's velocity value
@@ -40,17 +40,17 @@ class monte_carlo_localizer:
     def sensor_update(self, measurement):
 
         # get all invalid indices
-        ind1 = numpy.where(self.x_t[:, 0] < 0) 
-        ind2 = numpy.where(self.x_t[:, 0] > self.map_length-1)   
-        invalid = numpy.union1d(ind1[0],ind2[0])    
+        ind1 = np.where(self.x_t[:, 0] < 0) 
+        ind2 = np.where(self.x_t[:, 0] > self.map_length-1)   
+        invalid = np.union1d(ind1[0],ind2[0])    
 
         # discard by setting weight to 0
         self.w[invalid] = 0
 
         # get all valid particles
-        valid = numpy.setdiff1d(range(self.npart),invalid)
+        valid = np.setdiff1d(range(self.npart),invalid)
 
-        x = numpy.rint(self.x_t[valid,0].ravel())
+        x = np.rint(self.x_t[valid,0].ravel())
         map_vals = self.map[x.astype(int),:]
 
         # calculate weights
@@ -59,38 +59,39 @@ class monte_carlo_localizer:
         weights_z = 1/(0.00001 + abs(measurement[2] - map_vals[:,2])**3)
 
         # update weights
-        self.w[valid,0] = (weights_x + 2*weights_y + 0.2*weights_z)/3
+        self.w[valid,0] = (weights_x + weights_y + weights_z)/3
+
 
 
     # Performs the resampling of the new particle set from the old particle set
     def resample_particles(self):
 
         # initialise the new sample array
-        new_x_t = numpy.zeros((self.npart, 2))
+        new_x_t = np.zeros((self.npart, 2))
 
         # normalise weights
         w_total = sum(self.w)
         self.w = self.w / w_total
 
         # get all non-zero weights and matching indices
-        indices = numpy.where(self.w[:,0] != 0)
+        indices = np.where(self.w[:,0] != 0)
         indices = indices[0]
         w_pick = self.w[indices,0]
 
         # randomly resample from old particles based on probability
-        index = numpy.random.choice(indices, size=int(self.npart*0.9), p=w_pick)
+        index = np.random.choice(indices, size=int(self.npart*0.9), p=w_pick)
         new_x_t[range(int(self.npart*0.9))] = self.x_t[index]
 
         # add some noise to the newly sampled particles
-        new_x_t[range(int(self.npart*0.9)), 0] = new_x_t[range(int(self.npart*0.9)), 0] + (numpy.random.rand(int(self.npart*0.9)) * 2) - 1
-        new_x_t[range(int(self.npart*0.9)), 1] = new_x_t[range(int(self.npart*0.9)), 1] + (numpy.random.rand(int(self.npart*0.9)) * 2) - 1
+        new_x_t[range(int(self.npart*0.9)), 0] = new_x_t[range(int(self.npart*0.9)), 0] + (np.random.rand(int(self.npart*0.9)) * 2) - 1
+        new_x_t[range(int(self.npart*0.9)), 1] = new_x_t[range(int(self.npart*0.9)), 1] + (np.random.rand(int(self.npart*0.9)) * 2) - 1
 
         #always regenerate some particles entirely randomly to prevent particle deprivation
 
         # generate random starting location
-        new_x_t[int(self.npart*0.9):self.npart-1, 0] = numpy.random.rand(int(self.npart*0.1)-1) * (self.map_length-1)
+        new_x_t[int(self.npart*0.9):self.npart-1, 0] = np.random.rand(int(self.npart*0.1)-1) * (self.map_length-1)
         # generate random heading
-        new_x_t[int(self.npart*0.9):self.npart-1, 1] = (numpy.random.rand(int(self.npart*0.1)-1) * 6) - 3
+        new_x_t[int(self.npart*0.9):self.npart-1, 1] = (np.random.rand(int(self.npart*0.1)-1) * 600) - 300
 
         # store new particles
         self.x_t = new_x_t
@@ -115,23 +116,24 @@ class monte_carlo_localizer:
 if __name__ == "__main__":
 
     # map of hallway
-    hall_map = numpy.genfromtxt ('1d_map.csv', delimiter=",")
+    hall_map = np.genfromtxt ('1d_map_interpolated.csv', delimiter=",")
     
     print('Map')
     print(hall_map)
     print(' ')
 
     # sequence of measurements
-    sensor_seq = hall_map[10:70,:]
+    inds = range(1000, 7000, 100)
+    sensor_seq = hall_map[inds,:]
 
     # add some noise to the measurements
-    sensor_seq = sensor_seq + numpy.random.randn(sensor_seq.shape[0],sensor_seq.shape[1])
+    sensor_seq = sensor_seq + np.random.randn(sensor_seq.shape[0],sensor_seq.shape[1])/5
 
     #list of locations
     seq_length = 60
-    start_pos = 10
+    start_pos = 1000
     num_particles = 2000
-    speed = 1
+    speed = 100
 
     # particle filter initialise
     mcl = monte_carlo_localizer(num_particles, hall_map)
@@ -159,16 +161,16 @@ if __name__ == "__main__":
         # get the location using kde, rather than simple mean
 
         # this create the kernel, given an array it will estimate the probability over that values
-        kde = gaussian_kde( numpy.transpose(mcl.x_t[:, 0]) )
+        kde = gaussian_kde( np.transpose(mcl.x_t[:, 0]) )
         # these are the values over wich your kernel will be evaluated
         pdf = kde(range(mcl.map_length))
-        inds = numpy.argmax(pdf)
-        est = numpy.mean(inds)
+        inds = np.argmax(pdf)
+        est = np.mean(inds)
 
         print('Estimate')
         print(est)
 
-        true_location = start_pos + i
+        true_location = start_pos + i*100
 
         # plot the results
         plt.scatter(mcl.x_t[:,0], range(-mcl.npart/2,mcl.npart/2), s=1, c='k', marker='o', label="particles")
