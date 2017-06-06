@@ -37,7 +37,7 @@ class monte_carlo_localizer:
         # generate random starting location
         self.x_t[:, 0] = np.random.rand(self.npart) * (self.map_length-1)
         # generate random heading
-        self.x_t[:, 1] = (np.random.rand(self.npart) * 6) - 3
+        self.x_t[:, 1] = (np.random.rand(self.npart) * 2) - 1
 
     # updates the state of each particle based on it's state, essentialy moves
     # the particle position by it's velocity value
@@ -70,7 +70,7 @@ class monte_carlo_localizer:
         weights_z = 1/(0.00001 + abs(measurement[2] - map_vals[:,2])**3)
 
         # update weights
-        self.w[valid,0] = (weights_x + 2*weights_y + 0.2*weights_z)/3
+        self.w[valid,0] = (weights_x + weights_y + 0*weights_z)/3
 
 
     # Performs the resampling of the new particle set from the old particle set
@@ -93,15 +93,15 @@ class monte_carlo_localizer:
         new_x_t[range(int(self.npart*0.9))] = self.x_t[index]
 
         # add some noise to the newly sampled particles
-        new_x_t[range(int(self.npart*0.9)), 0] = new_x_t[range(int(self.npart*0.9)), 0] + (np.random.rand(int(self.npart*0.9)) * 2) - 1
-        new_x_t[range(int(self.npart*0.9)), 1] = new_x_t[range(int(self.npart*0.9)), 1] + (np.random.rand(int(self.npart*0.9)) * 2) - 1
+        new_x_t[range(int(self.npart*0.9)), 0] = new_x_t[range(int(self.npart*0.9)), 0] + np.random.rand(int(self.npart*0.9))
+        new_x_t[range(int(self.npart*0.9)), 1] = new_x_t[range(int(self.npart*0.9)), 1] + np.random.rand(int(self.npart*0.9))
 
         #always regenerate some particles entirely randomly to prevent particle deprivation
 
         # generate random starting location
         new_x_t[int(self.npart*0.9):self.npart-1, 0] = np.random.rand(int(self.npart*0.1)-1) * (self.map_length-1)
         # generate random heading
-        new_x_t[int(self.npart*0.9):self.npart-1, 1] = (np.random.rand(int(self.npart*0.1)-1) * 6) - 3
+        new_x_t[int(self.npart*0.9):self.npart-1, 1] = (np.random.rand(int(self.npart*0.1)-1) * 2) - 1
 
         # store new particles
         self.x_t = new_x_t
@@ -199,7 +199,7 @@ def udpSendThread():
   print(' ')
 
   # particle filter initialise
-  num_particles = 2000
+  num_particles = 5000
   speed = 1
   mcl = monte_carlo_localizer(num_particles, hall_map)
   
@@ -237,6 +237,7 @@ def udpSendThread():
     print(est)
 
     # plot the results
+    plt.clf()
     plt.scatter(mcl.x_t[:,0], range(mcl.npart), s=1, c='k', marker='o', label="particles")
     plt.scatter(est, 0, s=100, c='red', marker='o', label="estimated location")
     plt.plot(range(mcl.map_length),pdf*mcl.npart*10, label='kde')
@@ -244,7 +245,7 @@ def udpSendThread():
     plt.ylabel('y [m]')
     plt.ylim([-1, mcl.npart])
     plt.xlim([-1, mcl.map_length])
-    plt.pause(0.5)
+    plt.pause(0.2)
       
 
 # Start Application ############################################################

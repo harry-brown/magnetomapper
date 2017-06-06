@@ -10,7 +10,7 @@ import serial
 
 SERIAL = False
 
-WAIT = 0.5 # wait time in seconds between each poll
+WAIT = 1 # wait time in seconds between each poll
 NSAMPLES = 4 # number of samples to poll before averaging
 
 # Serial Settings
@@ -21,8 +21,8 @@ COM = 'COM5' # COM port of sensortag
 SEND_PORT = 4003
 RECV_PORT = 7005
 
-TAG_ADDR = "aaaa::212:4b00:c67:4803"
-#TAG_ADDR = "aaaa::212:4b00:7b5:1d03"
+#TAG_ADDR = "aaaa::212:4b00:c67:4803"
+TAG_ADDR = "aaaa::212:4b00:7b5:1d03"
 
 def serialPoll(s):
     s.write("\npoll\x0A")
