@@ -17,7 +17,7 @@ class monte_carlo_localizer:
         self.npart = num_particles
 
         self.map = env_map
-        self.map_length = env_map.size
+        self.map_length = env_map.shape[0]
 
         # generate initial random distribution of particles
         self.x_t = numpy.zeros((self.npart, 2))
@@ -51,13 +51,15 @@ class monte_carlo_localizer:
         valid = numpy.setdiff1d(range(self.npart),invalid)
 
         x = numpy.rint(self.x_t[valid,0].ravel())
-        map_vals = self.map[x.astype(int)]
+        map_vals = self.map[x.astype(int),:]
 
         # calculate weights
-        weights = 1/(0.00001 + abs(measurement - map_vals)**3)
+        weights_x = 1/(0.00001 + abs(measurement[0] - map_vals[:,0])**3)
+        weights_y = 1/(0.00001 + abs(measurement[1] - map_vals[:,1])**3)
+        weights_z = 1/(0.00001 + abs(measurement[2] - map_vals[:,2])**3)
 
         # update weights
-        self.w[valid,0] = weights
+        self.w[valid,0] = (weights_x + 2*weights_y + 0.2*weights_z)/3
 
 
     # Performs the resampling of the new particle set from the old particle set
@@ -113,27 +115,22 @@ class monte_carlo_localizer:
 if __name__ == "__main__":
 
     # map of hallway
-    hall_map = numpy.random.randint(1, 100, 200)
-
+    hall_map = numpy.genfromtxt ('1d_map.csv', delimiter=",")
+    
     print('Map')
     print(hall_map)
     print(' ')
 
     # sequence of measurements
-    sensor_seq = hall_map[50:150]
-
-    for i in range(30):
-        sensor_seq = numpy.append(sensor_seq, hall_map[149])
-
-    sensor_seq = numpy.append(sensor_seq, hall_map[20:50])
+    sensor_seq = hall_map[10:70,:]
 
     # add some noise to the measurements
-    sensor_seq = sensor_seq + (numpy.random.randn(sensor_seq.size)/2)
+    sensor_seq = sensor_seq + numpy.random.randn(sensor_seq.shape[0],sensor_seq.shape[1])
 
     #list of locations
-    seq_length = 160
-    start_pos = 50
-    num_particles = 5000
+    seq_length = 60
+    start_pos = 10
+    num_particles = 2000
     speed = 1
 
     # particle filter initialise
@@ -154,7 +151,7 @@ if __name__ == "__main__":
         plt.clf()
 
         # get reading
-        measurement = sensor_seq[i]
+        measurement = sensor_seq[i,:]
 
         # update
         mcl.update(measurement, speed)
@@ -168,30 +165,22 @@ if __name__ == "__main__":
         inds = numpy.argmax(pdf)
         est = numpy.mean(inds)
 
-
         print('Estimate')
         print(est)
 
-        if i < 100:
-            true_location = start_pos + i
-        elif i < 130:
-            true_location = start_pos + 99
-        else:
-            true_location = 20 + (i-130)
-            
-        print('True Location')
-        print(true_location)
-        print(' ')
+        true_location = start_pos + i
 
-        
         # plot the results
-        plt.scatter(mcl.x_t[:,0], range(mcl.npart), s=1, c='k', marker='o', label="particles")
+        plt.scatter(mcl.x_t[:,0], range(-mcl.npart/2,mcl.npart/2), s=1, c='k', marker='o', label="particles")
         plt.scatter(est, 0, s=100, c='red', marker='o', label="estimated location")
         plt.scatter(true_location, -10, s=100, c='g', marker='o', edgecolors='g', label="true location")
         plt.plot(range(mcl.map_length),pdf*mcl.npart*10, label='kde')
+        plt.plot(range(mcl.map_length),hall_map[:,0]*mcl.npart/200, label='kde')
+        plt.plot(range(mcl.map_length),hall_map[:,1]*mcl.npart/200, label='kde')
+        plt.plot(range(mcl.map_length),hall_map[:,2]*mcl.npart/200, label='kde')
         plt.xlabel('x [m]')
         plt.ylabel('y [m]')
-        plt.ylim([-10, num_particles])
+        plt.ylim([-mcl.npart/2, mcl.npart/2])
         plt.xlim([-1, mcl.map_length])
         plt.pause(0.05)
         
