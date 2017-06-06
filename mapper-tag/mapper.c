@@ -51,7 +51,7 @@ static struct MagnetometerCalibration
     int miny;
     int maxz;
     int minz;
-} magCalibration = {-10000, 10000, -10000, 10000, -10000, 10000};
+} magCalibration = {40073, 8207, 19496, -11261, -700, -38309};
 
 /* Initialisation ------------------------------------------------------------*/
 static void init(void)
@@ -467,16 +467,16 @@ PROCESS_THREAD(button_input_process, ev, data)
         //Check if sensor event has occured from left button press
         if (ev == sensors_event && data == &button_left_sensor)
         {
-            if (calibration_samples > number_samples)
-            {
-                printf("ping\n");
-            }
-            else
-            {
-                printf("Calibrating magnetometer...");
-                init_mpu_reading(NULL);
-                mode = CALIBRATION;
-            }
+            //if (calibration_samples > number_samples)
+            //{
+            printf("ping\n");
+            //}
+            // else
+            // {
+            //     //printf("Calibrating magnetometer...");
+            //     init_mpu_reading(NULL);
+            //     mode = CALIBRATION;
+            // }
         }
     }
 
