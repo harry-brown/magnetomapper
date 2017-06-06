@@ -334,6 +334,9 @@ PROCESS_THREAD(main_process, ev, data)
             {
                 init_mpu_reading(NULL);
                 mode = SERIAL;
+            } else if (strcmp(data, "cal") == 0)
+            {
+                printf("minx: %d, maxx: %d, miny: %d, maxy: %d, minz: %d, maxz: %d\n", magCalibration.minx, magCalibration.maxx, magCalibration.miny, magCalibration.maxy, magCalibration.minz, magCalibration.maxz);
             }
         }
     }
