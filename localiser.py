@@ -237,6 +237,7 @@ def udpSendThread():
     print(est)
 
     # plot the results
+    plt.clf()
     plt.scatter(mcl.x_t[:,0], range(mcl.npart), s=1, c='k', marker='o', label="particles")
     plt.scatter(est, 0, s=100, c='red', marker='o', label="estimated location")
     plt.plot(range(mcl.map_length),pdf*mcl.npart*10, label='kde')
@@ -244,7 +245,7 @@ def udpSendThread():
     plt.ylabel('y [m]')
     plt.ylim([-1, mcl.npart])
     plt.xlim([-1, mcl.map_length])
-    plt.pause(0.5)
+    plt.pause(0.2)
       
 
 # Start Application ############################################################
