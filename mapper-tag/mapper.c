@@ -351,6 +351,20 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
 
     PRINTF("Initialising MPU...");
 
+    magBias[0] = ((magCalibration.maxx + magCalibration.minx) / 2);
+    magBias[1] = ((magCalibration.maxy + magCalibration.miny) / 2);
+    magBias[2] = ((magCalibration.maxz + magCalibration.minz) / 2);
+
+    magScale[3] = ((magCalibration.maxx - magCalibration.minx) / 2);
+    magScale[4] = ((magCalibration.maxy - magCalibration.miny) / 2);
+    magScale[5] = ((magCalibration.maxz - magCalibration.minz) / 2);
+
+    averageScale = (magScale[3] + magScale[4] + magScale[5]) / 15;
+
+    magScale[0] = averageScale / magScale[3];
+    magScale[1] = averageScale / magScale[4];
+    magScale[2] = averageScale / magScale[5];
+
     //Processing loop of thread
     while (1)
     {
