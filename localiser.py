@@ -9,6 +9,7 @@ from threading import Thread
 import sys
 import numpy as np
 import math
+import json
 
 
 UDP_TIMESYNC_PORT = 4003 # node sends timesync packets on port 4003
@@ -38,9 +39,13 @@ def udpListenThread():
   while isRunning:
     
     try:
-      data, addr = sock.recvfrom( 1024 )
+      rawData, addr = sock.recvfrom( 1024 )
+      print rawData
+      data = json.loads(rawData)
       print data
     except socket.timeout:
+      pass
+    except ValueError:
       pass
     
 def udpSendThread():
