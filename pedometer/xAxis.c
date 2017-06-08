@@ -1,8 +1,8 @@
 /**
  * \file
  *         mpu-input.c
- *         Measures the accelerometer's X axis and sends in json format over
- *         serial. Left button pauses data send. 
+ *         Measures the accelerometer and Gyro X, Y Z axis and sends in json format over
+ *         serial. Left button pauses data read and send. 
  * \author
  *         G Siggins
  */
@@ -30,16 +30,52 @@ static void init_mpu_reading(void *not_used);
 uint8_t button;
 
 /*----------------------------------------------------------------------------*/
-//Prints X axis reading in JSON format with X as tag and random id
+//Prints readinga in JSON format with tags and random id
 static void
-print_mpu_reading(int reading)
+print_mpu_reading(int Xreading, int Zreading, int Yreading, int Greading, int gy, int gz)
 {
   printf("{\"id\": 4, \"X\":");
-  if(reading < 0) {
+  if(Xreading < 0) {
     printf("-");
-    reading = -reading;
+    Xreading = -Xreading;
   }
- printf("%d.%02d}\n", reading / 100, reading % 100);
+ printf("%d.%02d, ", Xreading / 100, Xreading % 100);
+
+ printf("\"Z\":");
+  if(Zreading < 0) {
+    printf("-");
+    Zreading = -Zreading;
+  }
+ printf("%d.%02d, ", Zreading / 100, Zreading % 100);
+
+  printf("\"Y\":");
+  if(Yreading < 0) {
+    printf("-");
+    Yreading = -Yreading;
+  }
+ printf("%d.%02d, ", Yreading / 100, Yreading % 100);
+
+ printf("\"gY\":");
+   if(gy < 0) {
+     printf("-");
+     gy = -gy;
+   }
+  printf("%d.%02d, ", gy / 100, gy % 100);
+
+   printf("\"gZ\":");
+   if(gz < 0) {
+     printf("-");
+     gz = -gz;
+   }
+  printf("%d.%02d, ", gz / 100, gz % 100);
+
+ printf("\"gX\":");
+  if(Greading < 0) {
+    printf("-");
+    Greading = -Greading;
+  }
+ printf("%d.%02d}\n", Greading / 100, Greading % 100);
+
 }
 
 /*---------------------------------------------------------------------------*/
@@ -50,16 +86,21 @@ init_mpu_reading(void *not_used)
 }
 
 /*---------------------------------------------------------------------------*/
-//If button has been pressed read and print X axis value
+//If button has been pressed, read and print values
 static void
 get_mpu_reading()
 {
-  int value;
-  clock_time_t next = CLOCK_SECOND/20;
+  int Xvalue, Zvalue, Gvalue, Yvalue, GY, GZ;
+  clock_time_t next = CLOCK_SECOND/100;
 
   if(button == 1) {
-    value = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_X);
-    print_mpu_reading(value);
+    Xvalue = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_X);
+    Zvalue = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Z);
+    Yvalue = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_ACC_Y);
+    Gvalue = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_GYRO_X);
+    GY = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_GYRO_Y);
+    GZ = mpu_9250_sensor.value(MPU_9250_SENSOR_TYPE_GYRO_Z);
+    print_mpu_reading(Xvalue, Zvalue, Yvalue, Gvalue, GY, GZ);
     SENSORS_DEACTIVATE(mpu_9250_sensor);
   }
 
