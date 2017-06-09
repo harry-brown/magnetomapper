@@ -76,20 +76,22 @@ def stepThread():
                     print (degree)
                     count = 0
                 difference = F - 1
-                if difference > 0.08:
+                if difference > 0.09:
                     count = 0
                     if degree == 0:
                         xc = xc + .6
-                        print (xc, yc)
+                        #print (xc, yc)
                     elif degree == 90:
                         yc = yc + .6
-                        print (xc, yc)
+                        #print (xc, yc)
                     elif degree == 180:
                         xc = xc - .6
-                        print (xc, yc)
+                        #print (xc, yc)
                     elif degree == 270:
                         yc = yc - .6
-                        print (xc, yc)
+                    if xc < 0.6:
+                        xc = 0
+                    print (xc, yc)
         except Exception, e:
             print "Exception:", e
             # close serial port
