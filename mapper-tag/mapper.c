@@ -32,7 +32,8 @@ static uint16_t number_samples = 100;
 
 float magBias[3], magScale[6], averageScale;
 
-enum communicationModes {
+enum communicationModes
+{
     SERIAL = 1,
     UDP = 2,
     CALIBRATION = 4
@@ -71,8 +72,7 @@ static void alive_timeout(void *ptr)
 /* Initiate a reading from the MPU9250 Sensor --------------------------------*/
 static void init_mpu_reading(void *not_used)
 {
-    mpu_9250_sensor.configure(SENSORS_ACTIVE, MPU_9250_SENSOR_TYPE_ACC_ALL |
-                                                  MPU_9250_SENSOR_TYPE_MAG);
+    mpu_9250_sensor.configure(SENSORS_ACTIVE, MPU_9250_SENSOR_TYPE_ACC_ALL | MPU_9250_SENSOR_TYPE_MAG);
 }
 
 /* Called when a reading is received from the MPU9250 ------------------------*/
@@ -145,19 +145,20 @@ static void get_mpu_reading()
 
     printf("printing now\n");
 
-    switch (mode) {
-        case SERIAL:
-            printf("%s", str);
-            break;
-        case UDP:
-            printf("Sending data over UDP: ");
-            printf("%s", str);
-            printf("\n");
-            uip_udp_packet_send(client_conn, str, strlen(str));
-            break;
-        default:
-            printf("error\n");
-            break;
+    switch (mode)
+    {
+    case SERIAL:
+        printf("%s", str);
+        break;
+    case UDP:
+        printf("Sending data over UDP: ");
+        printf("%s", str);
+        printf("\n");
+        uip_udp_packet_send(client_conn, str, strlen(str));
+        break;
+    default:
+        printf("error\n");
+        break;
     };
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
@@ -187,14 +188,14 @@ static void calibrate_mag()
         magCalibration.minz = value;
 
     SENSORS_DEACTIVATE(mpu_9250_sensor);
-    
+
     buzzer_start(1000);
     clock_delay_usec(1000);
     buzzer_stop();
 }
 
 /* Format the data to be displayed -------------------------------------------*/
-static void sprint_mpu_reading(int reading, char* buffer)
+static void sprint_mpu_reading(int reading, char *buffer)
 {
     if (reading < 0)
     {
@@ -334,7 +335,8 @@ PROCESS_THREAD(main_process, ev, data)
             {
                 init_mpu_reading(NULL);
                 mode = SERIAL;
-            } else if (strcmp(data, "cal") == 0)
+            }
+            else if (strcmp(data, "cal") == 0)
             {
                 printf("minx: %d, maxx: %d, miny: %d, maxy: %d, minz: %d, maxz: %d\n", magCalibration.minx, magCalibration.maxx, magCalibration.miny, magCalibration.maxy, magCalibration.minz, magCalibration.maxz);
             }
@@ -380,7 +382,7 @@ PROCESS_THREAD(mpu_sensor_process, ev, data)
                 if (calibration_samples++ > number_samples)
                 {
                     mode = SERIAL;
-                    
+
                     magBias[0] = ((magCalibration.maxx + magCalibration.minx) / 2);
                     magBias[1] = ((magCalibration.maxy + magCalibration.miny) / 2);
                     magBias[2] = ((magCalibration.maxz + magCalibration.minz) / 2);
