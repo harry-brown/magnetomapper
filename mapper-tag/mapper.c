@@ -24,7 +24,8 @@ PROCESS(main_process, "Main process");
 PROCESS(mpu_sensor_process, "MPU Sensor process");
 PROCESS(udp_client_process, "UDP client process");
 PROCESS(button_input_process, "Button Input process");
-AUTOSTART_PROCESSES(&main_process, &mpu_sensor_process, &udp_client_process, &button_input_process);
+AUTOSTART_PROCESSES(&main_process, &mpu_sensor_process, &udp_client_process, 
+                                                        &button_input_process);
 
 /* Variables -----------------------------------------------------------------*/
 static uint16_t calibration_samples = 0;

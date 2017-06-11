@@ -42,6 +42,7 @@
 #include "sys/rtimer.h"
 #include "sensor-common.h"
 #include "board-i2c.h"
+#include "buzzer.h"
 
 #include "ti-lib.h"
 
